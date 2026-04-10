@@ -1,0 +1,9 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    - prefer_const_constructors
+    - avoid_unnecessary_containers
+    - use_key_in_widget_constructors
+    - sized_box_for_whitespace
+    - prefer_single_quotes

@@ -1,0 +1,30 @@
+name: cuc_research_portal
+description: Portal de investigación para Clubes Universitarios de Ciencias.
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Descarga Space Grotesk desde Google Fonts o incluye los archivos en assets/fonts/
+  # https://fonts.google.com/specimen/Space+Grotesk
+
+  # Si no se agregan fuentes locales, comente la sección de fonts o use google_fonts.
+  # Alternativa sin archivos locales: usa el paquete google_fonts
+  # dependencies:
+  #   google_fonts: ^6.1.0
+  # Y en AppTheme reemplaza fontFamily: 'SpaceGrotesk' por
+  # textTheme: GoogleFonts.spaceGroteskTextTheme(...)
