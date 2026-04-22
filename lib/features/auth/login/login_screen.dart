@@ -118,7 +118,7 @@ class _LoginBody extends StatelessWidget {
           const SizedBox(height: 20),
           const CucTextField(
             label: 'CONTRASEÑA',
-            hint: '••••••••',
+            hint: '••••••••••',
             prefixIcon: Icons.key_outlined,
             obscureText: true,
           ),
