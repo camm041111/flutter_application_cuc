@@ -20,7 +20,7 @@ class AppTheme {
   AppTheme._();
 
   static ThemeData get dark {
-    final colorScheme = const ColorScheme(
+    const colorScheme = ColorScheme(
       brightness: Brightness.dark,
       primary: AppColors.primary,
       onPrimary: AppColors.background,
@@ -157,7 +157,7 @@ class AppTheme {
 
       // Chips (para etiquetas/tags)
       chipTheme: ChipThemeData(
-        backgroundColor: AppColors.primary.withOpacity(0.1),
+        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
         labelStyle: const TextStyle(
           color: AppColors.primary,
           fontSize: 10,

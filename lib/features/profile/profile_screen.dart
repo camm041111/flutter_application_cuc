@@ -49,7 +49,7 @@ class _ProfileHeader extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF1B2B20),
-              border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 2),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
             ),
             child: const Icon(Icons.person, color: AppColors.primary, size: 40),
           ),

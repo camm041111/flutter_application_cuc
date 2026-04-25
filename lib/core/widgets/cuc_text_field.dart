@@ -56,7 +56,7 @@ class _CucTextFieldState extends State<CucTextField> {
           decoration: InputDecoration(
             hintText: widget.hint,
             prefixIcon: widget.prefixIcon != null
-                ? Icon(widget.prefixIcon, color: AppColors.primary.withOpacity(0.6), size: 20)
+                ? Icon(widget.prefixIcon, color: AppColors.primary.withValues(alpha: 0.6), size: 20)
                 : null,
             suffixIcon: widget.obscureText
                 ? IconButton(

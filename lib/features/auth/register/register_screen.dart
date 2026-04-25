@@ -92,9 +92,9 @@ class _RegisterHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.background.withOpacity(0.8),
+        color: AppColors.background.withValues(alpha: 0.8),
         border: Border(
-          bottom: BorderSide(color: AppColors.primary.withOpacity(0.1)),
+          bottom: BorderSide(color: AppColors.primary.withValues(alpha: 0.1)),
         ),
       ),
       child: Row(
@@ -107,7 +107,7 @@ class _RegisterHeader extends StatelessWidget {
               height: 40,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.08),
+                color: AppColors.primary.withValues(alpha: 0.08),
               ),
               child: const Icon(Icons.arrow_back, color: AppColors.primary, size: 20),
             ),
@@ -120,7 +120,7 @@ class _RegisterHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     letterSpacing: 2,
-                    color: AppColors.primary.withOpacity(0.6),
+                    color: AppColors.primary.withValues(alpha: 0.6),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -161,7 +161,7 @@ class _AvatarPicker extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: AppColors.surface,
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.4),
+                  color: AppColors.primary.withValues(alpha: 0.4),
                   width: 2,
                 ),
               ),
@@ -182,7 +182,7 @@ class _AvatarPicker extends StatelessWidget {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.4),
+                      color: AppColors.primary.withValues(alpha: 0.4),
                       blurRadius: 8,
                     ),
                   ],
@@ -214,18 +214,18 @@ class _ClubSelector extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface.withOpacity(0.3),
+        color: AppColors.surface.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.science, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              const Text(
+              Icon(Icons.science, color: AppColors.primary, size: 20),
+              SizedBox(width: 8),
+              Text(
                 'UNIRME A UN CLUB',
                 style: TextStyle(
                   fontSize: 11,
@@ -236,8 +236,8 @@ class _ClubSelector extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          const TextField(
+          SizedBox(height: 12),
+          TextField(
             decoration: InputDecoration(
               hintText: 'Buscar club...',
               prefixIcon: Icon(Icons.search, size: 20),
@@ -245,10 +245,10 @@ class _ClubSelector extends StatelessWidget {
             ),
             style: TextStyle(fontSize: 13),
           ),
-          const SizedBox(height: 12),
-          const _ClubItem(name: 'Biotech Innovators', subtitle: 'Campus Principal • 124 miembros', selected: true),
-          const SizedBox(height: 8),
-          const _ClubItem(name: 'Quantum Computing Lab', subtitle: 'Ala de Ciencias • 45 miembros'),
+          SizedBox(height: 12),
+          _ClubItem(name: 'Biotech Innovators', subtitle: 'Campus Principal • 124 miembros', selected: true),
+          SizedBox(height: 8),
+          _ClubItem(name: 'Quantum Computing Lab', subtitle: 'Ala de Ciencias • 45 miembros'),
         ],
       ),
     );
@@ -271,10 +271,10 @@ class _ClubItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: selected ? AppColors.primary.withOpacity(0.05) : Colors.transparent,
+        color: selected ? AppColors.primary.withValues(alpha: 0.05) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: selected ? AppColors.primary.withOpacity(0.4) : AppColors.border,
+          color: selected ? AppColors.primary.withValues(alpha: 0.4) : AppColors.border,
         ),
       ),
       child: Row(
@@ -303,7 +303,7 @@ class _ClubItem extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               minimumSize: Size.zero,
-              side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
             ),
             child: Text(

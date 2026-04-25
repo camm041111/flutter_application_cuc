@@ -61,11 +61,11 @@ class _NewPostScreenState extends State<NewPostScreen> {
                   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 2, color: AppColors.muted),
                 ),
                 const SizedBox(width: 8),
-                Text('/', style: TextStyle(color: AppColors.muted.withOpacity(0.4))),
+                Text('/', style: TextStyle(color: AppColors.muted.withValues(alpha: 0.4))),
                 const SizedBox(width: 8),
                 Text(
                   'EXPLORAR',
-                  style: TextStyle(fontSize: 10, letterSpacing: 1.5, color: AppColors.primary.withOpacity(0.6)),
+                  style: TextStyle(fontSize: 10, letterSpacing: 1.5, color: AppColors.primary.withValues(alpha: 0.6)),
                 ),
               ],
             ),
@@ -156,7 +156,7 @@ class _NewPostAppBar extends StatelessWidget implements PreferredSizeWidget {
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(1),
-        child: Divider(height: 1, color: AppColors.primary.withOpacity(0.1)),
+        child: Divider(height: 1, color: AppColors.primary.withValues(alpha: 0.1)),
       ),
     );
   }
@@ -231,7 +231,7 @@ class _AuthorRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.primary.withOpacity(0.05))),
+        border: Border(bottom: BorderSide(color: AppColors.primary.withValues(alpha: 0.05))),
       ),
       child: Row(
         children: [
@@ -240,8 +240,8 @@ class _AuthorRow extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.primary.withOpacity(0.15),
-              border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+              color: AppColors.primary.withValues(alpha: 0.15),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
             child: const Icon(Icons.person, color: AppColors.primary, size: 24),
           ),
@@ -254,9 +254,9 @@ class _AuthorRow extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.8),
+                  color: AppColors.surface.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.border.withOpacity(0.6)),
+                  border: Border.all(color: AppColors.border.withValues(alpha: 0.6)),
                 ),
                 child: const Row(
                   children: [
@@ -292,7 +292,7 @@ class _TextArea extends StatelessWidget {
           topLeft: Radius.circular(12),
           topRight: Radius.circular(12),
         ),
-        border: Border.all(color: AppColors.primary.withOpacity(0.05)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.05)),
       ),
       child: TextField(
         controller: controller,
@@ -326,10 +326,10 @@ class _FormatToolbar extends StatelessWidget {
           bottomRight: Radius.circular(12),
         ),
         border: Border(
-          top: BorderSide(color: AppColors.primary.withOpacity(0.05)),
-          left: BorderSide(color: AppColors.primary.withOpacity(0.05)),
-          right: BorderSide(color: AppColors.primary.withOpacity(0.05)),
-          bottom: BorderSide(color: AppColors.primary.withOpacity(0.05)),
+          top: BorderSide(color: AppColors.primary.withValues(alpha: 0.05)),
+          left: BorderSide(color: AppColors.primary.withValues(alpha: 0.05)),
+          right: BorderSide(color: AppColors.primary.withValues(alpha: 0.05)),
+          bottom: BorderSide(color: AppColors.primary.withValues(alpha: 0.05)),
         ),
       ),
       child: const Row(
@@ -377,8 +377,8 @@ class _TagSection extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: AppColors.primary.withOpacity(0.05)),
-          bottom: BorderSide(color: AppColors.primary.withOpacity(0.05)),
+          top: BorderSide(color: AppColors.primary.withValues(alpha: 0.05)),
+          bottom: BorderSide(color: AppColors.primary.withValues(alpha: 0.05)),
         ),
       ),
       child: Column(
@@ -516,7 +516,7 @@ class _RepoPickerButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: const Color(0xFF141C12),
-          border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -525,7 +525,7 @@ class _RepoPickerButton extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.folder_open, color: AppColors.primary, size: 20),
@@ -566,7 +566,7 @@ class _SelectedRepoCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF141C12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -575,7 +575,7 @@ class _SelectedRepoCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(repo.icon, color: AppColors.primary, size: 20),
@@ -586,7 +586,7 @@ class _SelectedRepoCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(repo.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.onBackground)),
-                Text('Repositorio vinculado', style: TextStyle(fontSize: 10, color: AppColors.primary.withOpacity(0.7), letterSpacing: 0.5)),
+                Text('Repositorio vinculado', style: TextStyle(fontSize: 10, color: AppColors.primary.withValues(alpha: 0.7), letterSpacing: 0.5)),
               ],
             ),
           ),
@@ -609,7 +609,7 @@ class _RepoDropdown extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFF141C12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -631,7 +631,7 @@ class _RepoDropdown extends StatelessWidget {
               ),
             ),
           ),
-          Divider(height: 1, color: AppColors.primary.withOpacity(0.1)),
+          Divider(height: 1, color: AppColors.primary.withValues(alpha: 0.1)),
           ..._availableRepos.map(
             (r) => _RepoDropdownItem(repo: r, onSelect: onSelect),
           ),
@@ -653,7 +653,7 @@ class _RepoDropdownItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          border: Border(top: BorderSide(color: AppColors.primary.withOpacity(0.05))),
+          border: Border(top: BorderSide(color: AppColors.primary.withValues(alpha: 0.05))),
         ),
         child: Row(
           children: [

@@ -20,7 +20,7 @@ class LoginScreen extends StatelessWidget {
                   color: AppColors.surface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Column(
@@ -50,10 +50,10 @@ class _LoginHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.background.withOpacity(0.8),
+        color: AppColors.background.withValues(alpha: 0.8),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         border: Border(
-          bottom: BorderSide(color: AppColors.primary.withOpacity(0.1)),
+          bottom: BorderSide(color: AppColors.primary.withValues(alpha: 0.1)),
         ),
       ),
       child: Row(
@@ -67,7 +67,7 @@ class _LoginHeader extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     letterSpacing: 2,
-                    color: AppColors.primary.withOpacity(0.6),
+                    color: AppColors.primary.withValues(alpha: 0.6),
                     fontWeight: FontWeight.w600,
                   ),
                   textAlign: TextAlign.center,
@@ -103,7 +103,7 @@ class _LoginBody extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 4),
-          Text(
+          const Text(
             '¡Bienvenido de vuelta, sigamos investigando!',
             style: TextStyle(color: AppColors.muted, fontSize: 13),
             textAlign: TextAlign.center,
@@ -131,7 +131,7 @@ class _LoginBody extends StatelessWidget {
                 '¿Olvidaste tu contraseña?',
                 style: TextStyle(
                   fontSize: 10,
-                  color: AppColors.primary.withOpacity(0.7),
+                  color: AppColors.primary.withValues(alpha: 0.7),
                   fontWeight: FontWeight.w700,
                   letterSpacing: 1.2,
                 ),
@@ -159,7 +159,7 @@ class _LoginBody extends StatelessWidget {
               icon: const Icon(Icons.science_outlined, size: 18),
               label: const Text('CREAR CUENTA'),
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
+                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
               ),
             ),
           ),
@@ -177,7 +177,7 @@ class _Divider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: Divider(color: AppColors.primary.withOpacity(0.1))),
+        Expanded(child: Divider(color: AppColors.primary.withValues(alpha: 0.1))),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Text(
@@ -189,7 +189,7 @@ class _Divider extends StatelessWidget {
             ),
           ),
         ),
-        Expanded(child: Divider(color: AppColors.primary.withOpacity(0.1))),
+        Expanded(child: Divider(color: AppColors.primary.withValues(alpha: 0.1))),
       ],
     );
   }
@@ -210,7 +210,7 @@ class _CircleIconButton extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: AppColors.primary.withOpacity(0.08),
+          color: AppColors.primary.withValues(alpha: 0.08),
         ),
         child: Icon(icon, color: AppColors.primary, size: 20),
       ),
