@@ -9,7 +9,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Método para registrar un nuevo usuario
+  /// Metodo para registrar un nuevo usuario
   /// Retorna un [String] con el mensaje de error, o [null] si fue exitoso.
   Future<String?> registrarUsuario({
     required String correo,
