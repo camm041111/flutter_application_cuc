@@ -122,7 +122,7 @@ class _RepoCard extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(item.icon, color: AppColors.primary, size: 22),
@@ -143,7 +143,7 @@ class _RepoCard extends StatelessWidget {
               onPressed: () {},
               icon: const Icon(Icons.download_outlined, size: 20),
               style: IconButton.styleFrom(
-                backgroundColor: AppColors.border.withOpacity(0.3),
+                backgroundColor: AppColors.border.withValues(alpha: 0.3),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
@@ -165,7 +165,7 @@ class _RepoFab extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.primary,
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 20)],
+          boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 20)],
         ),
         child: const Icon(Icons.add, color: AppColors.background, size: 28),
       ),

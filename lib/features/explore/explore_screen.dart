@@ -140,7 +140,7 @@ class _ResearchPostCard extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: AppColors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(p.icon, color: AppColors.primary, size: 20),
@@ -198,7 +198,7 @@ class _ResearchPostCard extends StatelessWidget {
               ),
             ),
           // Acciones
-          Divider(color: AppColors.primary.withOpacity(0.05), height: 1),
+          Divider(color: AppColors.primary.withValues(alpha: 0.05), height: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
@@ -256,7 +256,7 @@ class _Fab extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.4),
+              color: AppColors.primary.withValues(alpha: 0.4),
               blurRadius: 20,
             ),
           ],
