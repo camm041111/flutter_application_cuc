@@ -1,37 +1,25 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Campo de texto unificado con ícono prefijo y soporte para visibilidad de contraseña.
-class CucTextField extends StatefulWidget {
+class CucTextField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final IconData prefixIcon;
+  final bool obscureText;
+  final TextInputType keyboardType;
+  final String? Function(String?)? validator; // Parámetro opcional
+  final TextEditingController? controller;    // Parámetro opcional
+
   const CucTextField({
     super.key,
     required this.label,
     required this.hint,
-    this.prefixIcon,
+    required this.prefixIcon,
     this.obscureText = false,
-    this.keyboardType,
+    this.keyboardType = TextInputType.text,
+    this.validator,
     this.controller,
   });
-
-  final String label;
-  final String hint;
-  final IconData? prefixIcon;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-  final TextEditingController? controller;
-
-  @override
-  State<CucTextField> createState() => _CucTextFieldState();
-}
-
-class _CucTextFieldState extends State<CucTextField> {
-  late bool _obscure;
-
-  @override
-  void initState() {
-    super.initState();
-    _obscure = widget.obscureText;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,35 +27,24 @@ class _CucTextFieldState extends State<CucTextField> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          widget.label,
+          label,
           style: const TextStyle(
             fontSize: 10,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.bold,
             letterSpacing: 1.5,
-            color: AppColors.muted,
           ),
         ),
-        const SizedBox(height: 6),
-        TextField(
-          controller: widget.controller,
-          obscureText: _obscure,
-          keyboardType: widget.keyboardType,
-          style: const TextStyle(color: Colors.white, fontSize: 14),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          validator: validator,
+          style: const TextStyle(fontSize: 14),
           decoration: InputDecoration(
-            hintText: widget.hint,
-            prefixIcon: widget.prefixIcon != null
-                ? Icon(widget.prefixIcon, color: AppColors.primary.withValues(alpha: 0.6), size: 20)
-                : null,
-            suffixIcon: widget.obscureText
-                ? IconButton(
-                    icon: Icon(
-                      _obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                      color: AppColors.muted,
-                      size: 20,
-                    ),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  )
-                : null,
+            hintText: hint,
+            prefixIcon: Icon(prefixIcon, size: 20, color: AppColors.primary),
+            // El estilo visual se hereda del Theme global para mantener consistencia
           ),
         ),
       ],
