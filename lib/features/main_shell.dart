@@ -1,30 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'explore/explore_screen.dart';
 import 'agenda/agenda_screen.dart';
 import 'forum/forum_screen.dart';
 import 'repository/repository_screen.dart';
 import 'profile/profile_screen.dart';
 import '../core/theme/app_theme.dart';
+import '../core/providers/supabase_provider.dart'; // 👈 Inyección de dependencias
 
-/// Shell principal con BottomNavigationBar que contiene las 5 secciones.
-/// Se usa StatefulWidget porque necesita mantener el índice seleccionado.
-class MainShell extends StatefulWidget {
+/// Shell principal con BottomNavigationBar.
+/// Evolucionado a ConsumerStatefulWidget para combinar estado local y global.
+class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
 
   @override
-  State<MainShell> createState() => _MainShellState();
+  ConsumerState<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends ConsumerState<MainShell> {
   int _currentIndex = 0;
-
-  static const _screens = [
-    ExploreScreen(),
-    AgendaScreen(),
-    ForumScreen(),
-    RepositoryScreen(),
-    ProfileScreen(),
-  ];
 
   static const _destinations = [
     NavigationDestination(
@@ -56,10 +51,37 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    // 1. Interceptamos la sesión activa directamente desde Riverpod
+    final currentUser = ref.watch(supabaseClientProvider).auth.currentUser;
+
+    // 🛡️ Filtro de Seguridad (Fail-Fast)
+    // Si la sesión es nula, el enrutador falló en bloquear esta ruta.
+    // Detenemos el renderizado antes de que ProfileScreen lance una excepción fatal.
+    if (currentUser == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            'Error Crítico: Sesión no encontrada.',
+            style: TextStyle(color: Colors.redAccent),
+          ),
+        ),
+      );
+    }
+
+    // 2. Construimos la lista de pantallas en tiempo de ejecución.
+    // Mantenemos 'const' en las que son estáticas para ahorrar memoria.
+    final screens = [
+      const ExploreScreen(),
+      const AgendaScreen(),
+      const ForumScreen(),
+      const RepositoryScreen(),
+      ProfileScreen(userId: currentUser.id), // 👈 Inyección dinámica segura
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
 import '../../core/constants/app_routes.dart';
@@ -29,7 +30,7 @@ class ExploreScreen extends StatelessWidget {
             bottom: 20,
             right: 20,
             child: _Fab(
-              onTap: () => Navigator.pushNamed(context, AppRoutes.newPost),
+              onTap: () => context.push('/new-post'),
             ),
           ),
         ],

@@ -57,4 +57,33 @@ class AuthService {
       return 'Ocurrió un error inesperado: $e';
     }
   }
+  /// Método para iniciar sesión
+  Future<String?> iniciarSesion({
+    required String correo,
+    required String contrasena,
+  }) async {
+    try {
+      await _supabase.auth.signInWithPassword(
+        email: correo.trim().toLowerCase(),
+        password: contrasena,
+      );
+      return null; // Éxito
+    } on AuthException catch (e) {
+      // Manejo de errores específicos (RF01.5: Intentos fallidos)
+      if (e.message.contains('Invalid login credentials')) {
+        return 'Correo o contraseña incorrectos.';
+      }
+      if (e.message.contains('Email not confirmed')) {
+        return 'Por favor, confirma tu correo institucional.';
+      }
+      return e.message;
+    } catch (e) {
+      return 'Error de conexión: $e';
+    }
+  }
+
+  /// Cerrar sesión
+  Future<void> cerrarSesion() async {
+    await _supabase.auth.signOut();
+  }
 }
