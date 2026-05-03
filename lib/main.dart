@@ -1,60 +1,45 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Importa tu tema oscuro/antracita
 import 'core/theme/app_theme.dart';
+// Importa el provider del router que creamos
 import 'core/constants/app_routes.dart';
-import 'features/auth/login/login_screen.dart';
-import 'features/auth/register/register_screen.dart';
-import 'features/main_shell.dart';
-import 'features/new_post/new_post_screen.dart';
 
-
-Future<void> main() async {
-  // asegura que los bindings de Flutter estén listos antes de ejecutar código nativo
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // .env
-  await dotenv.load(fileName: '.env');
+// Cargamos el archivo .env antes de inicializar Supabase
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    throw Exception("Error: No se encontró el archivo .env. Asegúrate de crearlo en la raíz del proyecto.");
+  }
 
-  // conexión con Supabase
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: AppColors.background,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
-
-  // ProviderScope (Requisito de Riverpod)
-  runApp(const ProviderScope(child: CucResearchApp()));
+  runApp(const ProviderScope(child: CucApp()));
 }
 
-class CucResearchApp extends StatelessWidget {
-  const CucResearchApp({super.key});
+// Convertimos a ConsumerWidget para poder leer el routerProvider
+class CucApp extends ConsumerWidget {
+  const CucApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'CUC Research Portal',
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Obtenemos la instancia de GoRouter configurada con nuestra lógica de seguridad
+    final router = ref.watch(routerProvider);
+
+    // Cambiamos MaterialApp tradicional por MaterialApp.router
+    return MaterialApp.router(
+      title: 'Clubes Universitarios de Ciencias',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
-      // Nota: Más adelante, en lugar de ir directo al Login,
-      // Riverpod decidirá aquí si va al Login o al MainShell dependiendo si el usuario ya inició sesión.
-      initialRoute: AppRoutes.login,
-      routes: {
-        AppRoutes.login: (_) => const LoginScreen(),
-        AppRoutes.register: (_) => const RegisterScreen(),
-        AppRoutes.main: (_) => const MainShell(),
-        AppRoutes.newPost: (_) => const NewPostScreen(),
-      },
+      theme: AppTheme.dark, // Tu tema minimalista
+      routerConfig: router, // Inyectamos GoRouter
     );
   }
 }
