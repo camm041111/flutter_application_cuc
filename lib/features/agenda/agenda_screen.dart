@@ -92,13 +92,13 @@ class _TabButton extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-          color: active ? AppColors.primary.withOpacity(0.1) : AppColors.surface,
+          color: active ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: active ? AppColors.primary : AppColors.border,
           ),
           boxShadow: active
-              ? [BoxShadow(color: AppColors.primary.withOpacity(0.15), blurRadius: 12)]
+              ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.15), blurRadius: 12)]
               : [],
         ),
         child: Row(
@@ -204,7 +204,7 @@ class _SectionTitle extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: AppColors.primary.withOpacity(0.1),
+              color: AppColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(999),
             ),
             child: Text(badge!, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary)),
@@ -333,7 +333,7 @@ class _SmallEventCard extends StatelessWidget {
                 width: 56,
                 height: 56,
                 decoration: BoxDecoration(
-                  color: past ? AppColors.surface : AppColors.primary.withOpacity(0.1),
+                  color: past ? AppColors.surface : AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Column(

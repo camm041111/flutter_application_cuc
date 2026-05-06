@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
-import '../../core/constants/app_routes.dart';
 
 class ExploreScreen extends StatelessWidget {
   const ExploreScreen({super.key});
@@ -29,7 +29,7 @@ class ExploreScreen extends StatelessWidget {
             bottom: 20,
             right: 20,
             child: _Fab(
-              onTap: () => Navigator.pushNamed(context, AppRoutes.newPost),
+              onTap: () => context.push('/new-post'),
             ),
           ),
         ],
@@ -140,7 +140,7 @@ class _ResearchPostCard extends StatelessWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.15),
+                    color: AppColors.primary.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(p.icon, color: AppColors.primary, size: 20),
@@ -198,7 +198,7 @@ class _ResearchPostCard extends StatelessWidget {
               ),
             ),
           // Acciones
-          Divider(color: AppColors.primary.withOpacity(0.05), height: 1),
+          Divider(color: AppColors.primary.withValues(alpha: 0.05), height: 1),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
@@ -256,7 +256,7 @@ class _Fab extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.4),
+              color: AppColors.primary.withValues(alpha: 0.4),
               blurRadius: 20,
             ),
           ],

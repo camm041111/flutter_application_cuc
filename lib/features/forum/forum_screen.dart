@@ -13,15 +13,15 @@ class ForumScreen extends StatelessWidget {
         children: [
           ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            children: [
-              const TextField(
+            children: const [
+              TextField(
                 decoration: InputDecoration(
                   hintText: 'Buscar discusiones...',
                   prefixIcon: Icon(Icons.search),
                 ),
               ),
-              const SizedBox(height: 20),
-              const _ForumPostCard(
+              SizedBox(height: 20),
+              _ForumPostCard(
                 authorName: 'Dr. Alan Smith',
                 authorRole: 'Biología Molecular',
                 timeAgo: 'Hace 2h',
@@ -32,8 +32,8 @@ class ForumScreen extends StatelessWidget {
                 replies: 8,
                 liked: false,
               ),
-              const SizedBox(height: 16),
-              const _ForumPostCard(
+              SizedBox(height: 16),
+              _ForumPostCard(
                 authorName: 'Sarah Chen',
                 authorRole: 'Astrofísica',
                 timeAgo: 'Hace 5h',
@@ -45,8 +45,8 @@ class ForumScreen extends StatelessWidget {
                 liked: true,
                 hasMedia: true,
               ),
-              const SizedBox(height: 16),
-              const _ForumPostCard(
+              SizedBox(height: 16),
+              _ForumPostCard(
                 authorName: 'Quantum Lab Group',
                 authorRole: 'Computación Cuántica',
                 timeAgo: 'Hace 1d',
@@ -115,7 +115,7 @@ class _ForumPostCard extends StatelessWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: isGroup ? AppColors.primary.withOpacity(0.1) : AppColors.surfaceVariant,
+                    color: isGroup ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceVariant,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: AppColors.border),
                   ),
@@ -173,7 +173,7 @@ class _ForumPostCard extends StatelessWidget {
             ],
             // Divider + actions
             const SizedBox(height: 12),
-            Divider(color: AppColors.border.withOpacity(0.5), height: 1),
+            Divider(color: AppColors.border.withValues(alpha: 0.5), height: 1),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -220,7 +220,7 @@ class _ForumFab extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppColors.primary,
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 20)],
+          boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 20)],
         ),
         child: const Icon(Icons.add_comment, color: AppColors.background, size: 26),
       ),

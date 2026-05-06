@@ -1,35 +1,137 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/cuc_text_field.dart';
-import '../../../core/constants/app_routes.dart';
+import '../../../core/services/auth_service.dart';
+import '../widgets/login_header.dart';
+import '../widgets/login_footer.dart';
 
-class LoginScreen extends StatelessWidget {
+// Convertimos a ConsumerStatefulWidget para gestionar el estado de carga y acceder a providers
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends ConsumerState<LoginScreen> {
+  // Controladores para capturar la entrada de texto
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  /// Lógica de autenticación que cumple con el RF01.4
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    // Llamada al servicio de autenticación
+    final errorMessage = await ref.read(authServiceProvider).iniciarSesion(
+      correo: _emailController.text,
+      contrasena: _passwordController.text,
+    );
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+
+      if (errorMessage != null) {
+        // Manejo de errores (Credenciales inválidas o falta de red)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        // NOTA: No llamamos a context.go() aquí.
+        // El routerProvider detectará el cambio de sesión y redirigirá automáticamente
+        // a '/' o a '/pending' según el estado del usuario[cite: 3].
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: Container(
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.primary.withOpacity(0.1),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 20),
+                  LoginHeader(
+                    onBack: () => Navigator.maybePop(context),
                   ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _LoginHeader(onBack: () => Navigator.maybePop(context)),
-                    const _LoginBody(),
-                  ],
-                ),
+                  const SizedBox(height: 40),
+                  _buildWelcomeText(),
+                  const SizedBox(height: 32),
+
+                  // Campo de Correo
+                  CucTextField(
+                    controller: _emailController,
+                    label: 'CORREO INSTITUCIONAL',
+                    hint: 'usuario@alumno.ujat.mx',
+                    prefixIcon: Icons.alternate_email,
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Ingresa tu correo';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Campo de Contraseña
+                  CucTextField(
+                    controller: _passwordController,
+                    label: 'CONTRASEÑA',
+                    hint: '••••••••',
+                    prefixIcon: Icons.key_outlined,
+                    obscureText: true,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+                      return null;
+                    },
+                  ),
+
+                  _buildForgotPassword(),
+                  const SizedBox(height: 32),
+
+                  // Botón de Acción con estado de carga
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _handleLogin,
+                      icon: _isLoading
+                          ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                      )
+                          : const Icon(Icons.shield_outlined, size: 18),
+                      label: Text(_isLoading ? 'VERIFICANDO...' : 'INICIAR SESIÓN'),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+                  const LoginFooter(),
+                  const SizedBox(height: 20),
+                ],
               ),
             ),
           ),
@@ -37,182 +139,45 @@ class LoginScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-// ── Sub-widgets internos ────────────────────────────────────────────────────
-
-class _LoginHeader extends StatelessWidget {
-  const _LoginHeader({required this.onBack});
-  final VoidCallback onBack;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.background.withOpacity(0.8),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        border: Border(
-          bottom: BorderSide(color: AppColors.primary.withOpacity(0.1)),
-        ),
-      ),
-      child: Row(
-        children: [
-          _CircleIconButton(icon: Icons.arrow_back, onTap: onBack),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  'CLUBES UNIVERSITARIOS DE CIENCIAS',
-                  style: TextStyle(
-                    fontSize: 9,
-                    letterSpacing: 2,
-                    color: AppColors.primary.withOpacity(0.6),
-                    fontWeight: FontWeight.w600,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'INICIAR SESIÓN',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-          // Espaciador simétrico
-          const SizedBox(width: 40),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoginBody extends StatelessWidget {
-  const _LoginBody();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-      child: Column(
-        children: [
-          const SizedBox(height: 4),
-          Text(
-            '¡Bienvenido de vuelta, sigamos investigando!',
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 28),
-          const CucTextField(
-            label: 'CORREO ELECTRÓNICO',
-            hint: 'researcher@cuc.edu',
-            prefixIcon: Icons.alternate_email,
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 20),
-          const CucTextField(
-            label: 'CONTRASEÑA',
-            hint: '••••••••••',
-            prefixIcon: Icons.key_outlined,
-            obscureText: true,
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () {},
-              child: Text(
-                '¿Olvidaste tu contraseña?',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.primary.withOpacity(0.7),
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.pushReplacementNamed(context, AppRoutes.main);
-              },
-              icon: const Icon(Icons.shield_outlined, size: 18),
-              label: const Text('INICIAR SESIÓN'),
-            ),
-          ),
-          const SizedBox(height: 20),
-          const _Divider(label: '¿Aún no estás registrado?'),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.register),
-              icon: const Icon(Icons.science_outlined, size: 18),
-              label: const Text('CREAR CUENTA'),
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: AppColors.primary.withOpacity(0.3)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
+  Widget _buildWelcomeText() {
+    return const Column(
       children: [
-        Expanded(child: Divider(color: AppColors.primary.withOpacity(0.1))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 9,
-              color: AppColors.muted,
-              letterSpacing: 1.5,
-            ),
+        Text(
+          '¡Bienvenido de vuelta!',
+          style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold
           ),
+          textAlign: TextAlign.center,
         ),
-        Expanded(child: Divider(color: AppColors.primary.withOpacity(0.1))),
+        SizedBox(height: 8),
+        Text(
+          'Sigamos impulsando la ciencia en la UJAT.',
+          style: TextStyle(color: AppColors.muted, fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
-}
 
-class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.primary.withOpacity(0.08),
+  Widget _buildForgotPassword() {
+    return Align(
+      alignment: Alignment.centerRight,
+      child: TextButton(
+        onPressed: () {
+          // Implementar flujo de recuperación RF01.6[cite: 3]
+        },
+        child: Text(
+          '¿Olvidaste tu contraseña?',
+          style: TextStyle(
+            fontSize: 10,
+            color: AppColors.primary.withValues(alpha: 0.7),
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.2,
+          ),
         ),
-        child: Icon(icon, color: AppColors.primary, size: 20),
       ),
     );
   }
