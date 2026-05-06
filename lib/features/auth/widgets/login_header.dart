@@ -23,7 +23,7 @@ class LoginHeader extends StatelessWidget {
           style: TextStyle(
             fontSize: 10,
             letterSpacing: 2.5,
-            color: AppColors.primary.withOpacity(0.6),
+            color: AppColors.primary.withValues(alpha: 0.6),
             fontWeight: FontWeight.w600,
           ),
           textAlign: TextAlign.center,

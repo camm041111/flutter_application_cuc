@@ -10,16 +10,36 @@ import 'core/constants/app_routes.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-// Cargamos el archivo .env antes de inicializar Supabase
+  // Cargamos el archivo .env antes de inicializar Supabase
   try {
-    await dotenv.load(fileName: ".env");
+    await dotenv.load(fileName: '.env');
   } catch (e) {
-    throw Exception("Error: No se encontró el archivo .env. Asegúrate de crearlo en la raíz del proyecto.");
+    throw Exception(
+      'Error: No se encontró el archivo .env. Asegúrate de crearlo en la raíz del proyecto.',
+    );
+  }
+
+  final supabaseUrl = dotenv.env['SUPABASE_URL']?.trim() ?? '';
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY']?.trim() ?? '';
+
+  if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+    throw Exception(
+      'Error: SUPABASE_URL y SUPABASE_ANON_KEY deben existir en el archivo .env.',
+    );
+  }
+
+  final parsedSupabaseUrl = Uri.tryParse(supabaseUrl);
+  if (parsedSupabaseUrl == null ||
+      !parsedSupabaseUrl.hasScheme ||
+      !parsedSupabaseUrl.hasAuthority) {
+    throw Exception(
+      'Error: SUPABASE_URL debe ser una URL completa, por ejemplo https://tu-proyecto.supabase.co.',
+    );
   }
 
   await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
   );
 
   runApp(const ProviderScope(child: CucApp()));

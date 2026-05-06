@@ -41,10 +41,10 @@ class PendingProfileScreen extends ConsumerWidget {
           height: 140,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.15),
+                color: AppColors.primary.withValues(alpha: 0.15),
                 blurRadius: 35,
                 spreadRadius: 5,
               ),
@@ -73,7 +73,7 @@ class PendingProfileScreen extends ConsumerWidget {
           ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 16),
         Text(
           'Tu registro ha sido exitoso. Actualmente, tu acceso está pendiente de aprobación por el Coordinador de tu División Académica.',
           style: TextStyle(
@@ -114,7 +114,7 @@ class PendingProfileScreen extends ConsumerWidget {
           },
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
-            side: BorderSide(color: Colors.white.withOpacity(0.2)),
+            side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
           ),
           child: const Text(
             'CERRAR SESIÓN',

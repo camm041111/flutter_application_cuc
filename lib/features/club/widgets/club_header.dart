@@ -29,7 +29,7 @@ class ClubHeader extends ConsumerWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1B2B20),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 2),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 2),
                   image: club['url_logo'] != null && club['url_logo'].toString().isNotEmpty
                       ? DecorationImage(image: NetworkImage(club['url_logo']), fit: BoxFit.cover)
                       : null,

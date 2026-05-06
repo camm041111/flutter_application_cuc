@@ -141,8 +141,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Widget _buildWelcomeText() {
-    return Column(
-      children: const [
+    return const Column(
+      children: [
         Text(
           '¡Bienvenido de vuelta!',
           style: TextStyle(
@@ -173,7 +173,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           '¿Olvidaste tu contraseña?',
           style: TextStyle(
             fontSize: 10,
-            color: AppColors.primary.withOpacity(0.7),
+            color: AppColors.primary.withValues(alpha: 0.7),
             fontWeight: FontWeight.w700,
             letterSpacing: 1.2,
           ),

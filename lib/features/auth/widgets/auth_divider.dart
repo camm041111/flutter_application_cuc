@@ -16,7 +16,7 @@ class AuthDivider extends StatelessWidget {
         // Línea izquierda
         Expanded(
           child: Divider(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             thickness: 1,
           ),
         ),
@@ -25,7 +25,7 @@ class AuthDivider extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             label.toUpperCase(), // Mantenemos la estética de mayúsculas del proyecto
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 10,
               color: AppColors.muted,
               letterSpacing: 1.5,
@@ -36,7 +36,7 @@ class AuthDivider extends StatelessWidget {
         // Línea derecha
         Expanded(
           child: Divider(
-            color: AppColors.primary.withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             thickness: 1,
           ),
         ),

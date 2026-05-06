@@ -159,7 +159,7 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
                 prefixIcon: Icon(Icons.school_outlined, size: 20, color: AppColors.primary),
                 labelStyle: TextStyle(fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold),
               ),
-              value: _divisionSeleccionadaId,
+              initialValue: _divisionSeleccionadaId,
               items: divisiones.map((div) => DropdownMenuItem(
                 value: div['id'].toString(),
                 child: Text(div['acronimo'], style: const TextStyle(fontSize: 13)),
@@ -178,14 +178,14 @@ class _RegisterFormState extends ConsumerState<RegisterForm> {
           // 8. Dropdown Dinámico de Clubes (Dependiente del anterior)
           clubesAsync.when(
             loading: () => _divisionSeleccionadaId != null ? const LinearProgressIndicator() : const SizedBox.shrink(),
-            error: (err, stack) => Text('Error al cargar clubes', style: const TextStyle(color: Colors.red)),
+            error: (err, stack) => const Text('Error al cargar clubes', style: TextStyle(color: Colors.red)),
             data: (clubes) => DropdownButtonFormField<String>(
               decoration: const InputDecoration(
                 labelText: 'CLUB DE INTERÉS',
                 prefixIcon: Icon(Icons.science_outlined, size: 20, color: AppColors.primary),
                 labelStyle: TextStyle(fontSize: 10, letterSpacing: 1.5, fontWeight: FontWeight.bold),
               ),
-              value: _clubSeleccionadoId,
+              initialValue: _clubSeleccionadoId,
               items: clubes.isEmpty ? null : clubes.map((club) => DropdownMenuItem(
                 value: club['id'].toString(),
                 child: Text(club['nombre'], style: const TextStyle(fontSize: 13)),

@@ -28,7 +28,7 @@ class RegisterScreen extends StatelessWidget {
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text(
+                  child: const Text(
                       'INICIAR SESIÓN',
                       style: TextStyle(
                         color: AppColors.primary,

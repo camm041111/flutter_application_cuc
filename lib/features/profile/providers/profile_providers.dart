@@ -56,9 +56,6 @@ final profileProvider = FutureProvider.family<UserProfile, String>((ref, userId)
       .eq('id', userId)
       .single();
 
-  print('--- PAYLOAD CRUDO DE SUPABASE ---');
-  print(response);
-  print('---------------------------------');
   return UserProfile.fromJson(response);
 });
 

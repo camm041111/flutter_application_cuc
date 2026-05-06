@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/profile_providers.dart';
 import '../../club/screens/club_profile_screen.dart';
+import '../../repository/repository_screen.dart';
 
 class ProfileHeader extends StatelessWidget {
   final UserProfile profile;
@@ -21,7 +22,7 @@ class ProfileHeader extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: const Color(0xFF1B2B20), // Fondo antracita
-            border: Border.all(color: AppColors.primary.withOpacity(0.3), width: 2),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 2),
             image: profile.urlAvatar != null
                 ? DecorationImage(image: NetworkImage(profile.urlAvatar!), fit: BoxFit.cover)
                 : null,
@@ -95,7 +96,12 @@ class ProfileHeader extends StatelessWidget {
     IconButton(
     icon: const Icon(Icons.folder_outlined, color: AppColors.primary, size: 26),
     onPressed: () {
-    // TODO: Lógica para ver el portafolio personal en el repositorio
+    Navigator.push(
+    context,
+    MaterialPageRoute(
+    builder: (_) => const RepositoryScreen(),
+    ),
+    );
     },
     ),
     ],

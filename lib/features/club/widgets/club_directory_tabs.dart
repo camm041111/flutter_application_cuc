@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../profile/profile_screen.dart';
 import '../providers/club_providers.dart';
 
 class ClubDirectoryTabs extends ConsumerWidget {
@@ -73,7 +74,15 @@ class _MemberList extends StatelessWidget {
           ),
           trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
           onTap: () {
-            // Lógica de navegación hacia el perfil personal inyectando user['id']
+            final userId = user['id'] as String?;
+            if (userId == null) return;
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileScreen(userId: userId),
+              ),
+            );
           },
         );
       },
