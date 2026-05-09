@@ -37,10 +37,11 @@ class ProfileScreen extends ConsumerWidget {
           child: ListView(
             padding: const EdgeInsets.only(bottom: 24),
             children: [
-              ProfileHeader(profile: profile),
+              ProfileHeader(profile: profile, isOwner: isOwner),
 
               // 🛡️ PASO 1: Lógica de Acceso al Panel de Gestión
-              if (isOwner && profile.rol == 'coordinador')
+              if (isOwner &&
+                  (profile.rol == 'coordinador' || profile.rol == 'lider'))
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 18, vertical: 8),

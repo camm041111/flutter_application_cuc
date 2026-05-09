@@ -9,6 +9,7 @@ class CucTextField extends StatelessWidget {
   final TextInputType keyboardType;
   final String? Function(String?)? validator; // Parámetro opcional
   final TextEditingController? controller;    // Parámetro opcional
+  final Widget? suffixIcon;
 
   const CucTextField({
     super.key,
@@ -19,6 +20,7 @@ class CucTextField extends StatelessWidget {
     this.keyboardType = TextInputType.text,
     this.validator,
     this.controller,
+    this.suffixIcon,
   });
 
   @override
@@ -44,6 +46,7 @@ class CucTextField extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(prefixIcon, size: 20, color: AppColors.primary),
+            suffixIcon: suffixIcon,
             // El estilo visual se hereda del Theme global para mantener consistencia
           ),
         ),

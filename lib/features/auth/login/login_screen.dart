@@ -21,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
+  bool _showPassword = false;
 
   @override
   void dispose() {
@@ -102,7 +103,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     label: 'CONTRASEÑA',
                     hint: '••••••••',
                     prefixIcon: Icons.key_outlined,
-                    obscureText: true,
+                    obscureText: !_showPassword,
+                    suffixIcon: IconButton(
+                      tooltip: _showPassword
+                          ? 'Ocultar contraseña'
+                          : 'Mostrar contraseña',
+                      icon: Icon(
+                        _showPassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: AppColors.muted,
+                      ),
+                      onPressed: () {
+                        setState(() => _showPassword = !_showPassword);
+                      },
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
                       return null;
