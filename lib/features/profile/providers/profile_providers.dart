@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/providers/supabase_provider.dart';
 
 // 1. Actualizamos el Modelo
@@ -63,11 +64,26 @@ final profileProvider = FutureProvider.family<UserProfile, String>((ref, userId)
 final heatmapProvider = FutureProvider.family<Map<DateTime, int>, String>((ref, userId) async {
   final supabase = ref.read(supabaseClientProvider);
 
-  // Llamada limpia al motor de PostgreSQL que configuramos en la Fase 1
-  final List<dynamic> response = await supabase.rpc(
-    'obtener_datos_heatmap',
-    params: {'p_id_usuario': userId},
-  );
+  late final List<dynamic> response;
+  try {
+    response = await supabase.rpc(
+      'obtener_datos_heatmap',
+      params: {'p_id_usuario': userId},
+    );
+  } on PostgrestException catch (e) {
+    if (e.code != 'PGRST202' && e.code != '42883') rethrow;
+    response = await supabase
+        .from('logs_actividad')
+        .select('fecha_creacion')
+        .eq('id_usuario', userId)
+        .gte(
+          'fecha_creacion',
+          DateTime.now()
+              .subtract(const Duration(days: 26 * 7))
+              .toIso8601String(),
+        );
+    return _heatmapFromActivityLogs(response);
+  }
 
   final Map<DateTime, int> heatmapData = {};
 
@@ -81,6 +97,19 @@ final heatmapProvider = FutureProvider.family<Map<DateTime, int>, String>((ref, 
 
   return heatmapData;
 });
+
+Map<DateTime, int> _heatmapFromActivityLogs(List<dynamic> rows) {
+  final heatmapData = <DateTime, int>{};
+  for (final row in rows) {
+    final value = (row as Map)['fecha_creacion'];
+    final date = DateTime.tryParse((value ?? '').toString());
+    if (date == null) continue;
+    final key = DateTime(date.year, date.month, date.day);
+    final next = (heatmapData[key] ?? 0) + 1;
+    heatmapData[key] = next > 4 ? 4 : next;
+  }
+  return heatmapData;
+}
 
 // 4. Provider de Métricas (Lazy Load: Solo carga si el recuadro es visible/requerido)
 // Usamos un Record ({int publicaciones, int foro}) para tipar el retorno.

@@ -41,7 +41,7 @@ final pendingDocumentsProvider =
   final response = await supabase
       .from('publicaciones_repositorio')
       .select(
-          'id, id_autor, id_club, titulo, categoria, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
+          'id, id_autor, id_club, titulo, descripcion, categoria, area_conocimiento, etiquetas, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
       .eq('id_club', profile['id_club'])
       .eq('estado', 'pendiente')
       .order('fecha_creacion', ascending: true);
@@ -85,13 +85,22 @@ class CoordinatorActions {
     final supabase = ref.read(supabaseClientProvider);
 
     try {
-      await supabase.rpc(
-        'revisar_publicacion_repositorio',
-        params: {
-          'p_id_publicacion': documentId,
-          'p_aprobada': approved,
-        },
-      );
+      try {
+        await supabase.rpc(
+          'revisar_publicacion_repositorio',
+          params: {
+            'p_id_publicacion': documentId,
+            'p_aprobada': approved,
+          },
+        );
+      } on PostgrestException catch (e) {
+        // Algunos entornos del proyecto aún no tienen el RPC instalado.
+        // La actualización directa mantiene funcional el flujo de curaduría.
+        if (e.code != 'PGRST202' && e.code != '42883') rethrow;
+        await supabase.from('publicaciones_repositorio').update({
+          'estado': approved ? 'aprobado' : 'rechazado',
+        }).eq('id', documentId);
+      }
 
       ref.invalidate(pendingDocumentsProvider);
       ref.invalidate(repositoryDocumentsProvider);

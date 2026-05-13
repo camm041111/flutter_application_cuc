@@ -9,6 +9,8 @@ class ClubEvent {
     required this.description,
     required this.location,
     required this.startsAt,
+    required this.endsAt,
+    required this.clubId,
     required this.clubName,
     this.imageUrl,
   });
@@ -18,6 +20,8 @@ class ClubEvent {
   final String description;
   final String location;
   final DateTime startsAt;
+  final DateTime endsAt;
+  final String clubId;
   final String clubName;
   final String? imageUrl;
 
@@ -29,16 +33,18 @@ class ClubEvent {
       title: (json['titulo'] ?? 'Evento sin título').toString(),
       description: (json['descripcion'] ?? '').toString(),
       location: (json['ubicacion'] ?? 'Ubicación por confirmar').toString(),
-      startsAt: _parseStartsAt(json),
+      startsAt: _parseDateTime(json, 'hora_inicio'),
+      endsAt: _parseDateTime(json, 'hora_fin'),
+      clubId: (json['id_club'] ?? '').toString(),
       clubName: (club?['nombre'] ?? 'CUC').toString(),
       imageUrl: json['imagen_url']?.toString(),
     );
   }
 
-  static DateTime _parseStartsAt(Map<String, dynamic> json) {
+  static DateTime _parseDateTime(Map<String, dynamic> json, String timeKey) {
     final fecha = (json['fecha'] ?? '').toString();
-    final horaInicio = (json['hora_inicio'] ?? '00:00:00').toString();
-    return DateTime.tryParse('${fecha}T$horaInicio') ?? DateTime.now();
+    final time = (json[timeKey] ?? '00:00:00').toString();
+    return DateTime.tryParse('${fecha}T$time') ?? DateTime.now();
   }
 }
 
@@ -76,10 +82,22 @@ class ShowFutureEventsNotifier extends Notifier<bool> {
 final eventsProvider = FutureProvider.autoDispose<List<ClubEvent>>((ref) async {
   final showFuture = ref.watch(showFutureEventsProvider);
   final supabase = ref.read(supabaseClientProvider);
+  final user = supabase.auth.currentUser;
+  if (user == null) return [];
+
+  final profile = await supabase
+      .from('perfiles')
+      .select('id_club')
+      .eq('id', user.id)
+      .single();
+  final clubId = (profile['id_club'] ?? '').toString();
+  if (clubId.isEmpty) return [];
+
   final today = DateTime.now().toIso8601String().split('T').first;
 
   dynamic query = supabase.from('eventos_agenda').select(
-      'id, titulo, descripcion, ubicacion, fecha, hora_inicio, clubes(nombre)');
+      'id, id_club, titulo, descripcion, ubicacion, fecha, hora_inicio, hora_fin, clubes(nombre)')
+      .eq('id_club', clubId);
 
   query = showFuture
       ? query.gte('fecha', today).order('fecha', ascending: true)
@@ -107,6 +125,25 @@ final canManageEventsProvider = FutureProvider.autoDispose<bool>((ref) async {
   final clubId = (profile['id_club'] ?? '').toString();
   return status == 'activo' &&
       clubId.isNotEmpty &&
+      (role == 'coordinador' || role == 'lider');
+});
+
+final canManageEventProvider =
+    FutureProvider.autoDispose.family<bool, ClubEvent>((ref, event) async {
+  final supabase = ref.read(supabaseClientProvider);
+  final user = supabase.auth.currentUser;
+  if (user == null) return false;
+
+  final profile = await supabase
+      .from('perfiles')
+      .select('rol, estado, id_club')
+      .eq('id', user.id)
+      .single();
+
+  final role = (profile['rol'] ?? '').toString();
+  final status = (profile['estado'] ?? '').toString();
+  return status == 'activo' &&
+      event.clubId == (profile['id_club'] ?? '').toString() &&
       (role == 'coordinador' || role == 'lider');
 });
 
@@ -152,6 +189,52 @@ class EventActions {
     });
 
     ref.invalidate(eventsProvider);
+  }
+
+  Future<void> updateEvent(ClubEvent event, EventInput input) async {
+    await _assertCanManage(event.clubId);
+
+    final supabase = ref.read(supabaseClientProvider);
+    await supabase.from('eventos_agenda').update({
+      'titulo': input.title.trim(),
+      'descripcion': input.description.trim(),
+      'fecha': _dateString(input.date),
+      'hora_inicio': _timeString(input.startTime),
+      'hora_fin': _timeString(input.endTime),
+      'ubicacion': input.location.trim(),
+    }).eq('id', event.id);
+
+    ref.invalidate(eventsProvider);
+  }
+
+  Future<void> deleteEvent(ClubEvent event) async {
+    await _assertCanManage(event.clubId);
+
+    final supabase = ref.read(supabaseClientProvider);
+    await supabase.from('eventos_agenda').delete().eq('id', event.id);
+    ref.invalidate(eventsProvider);
+  }
+
+  Future<void> _assertCanManage(String eventClubId) async {
+    final supabase = ref.read(supabaseClientProvider);
+    final user = supabase.auth.currentUser;
+    if (user == null) {
+      throw Exception('Debes iniciar sesión para gestionar eventos.');
+    }
+
+    final profile = await supabase
+        .from('perfiles')
+        .select('id_club, rol, estado')
+        .eq('id', user.id)
+        .single();
+
+    final role = (profile['rol'] ?? '').toString();
+    final status = (profile['estado'] ?? '').toString();
+    if (status != 'activo' ||
+        eventClubId != (profile['id_club'] ?? '').toString() ||
+        (role != 'coordinador' && role != 'lider')) {
+      throw Exception('No tienes permisos para gestionar este evento.');
+    }
   }
 
   static String _dateString(DateTime value) {

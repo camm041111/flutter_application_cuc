@@ -177,25 +177,15 @@ class _EventsList extends StatelessWidget {
       );
     }
 
-    final featured = showFuture ? events.first : null;
-    final rest = featured == null ? events : events.skip(1).toList();
-
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        if (featured != null) ...[
-          _SectionTitle(
-              label: featured.clubName, badge: _badgeFor(featured.startsAt)),
-          const SizedBox(height: 12),
-          _FeaturedEventCard(event: featured),
-          const SizedBox(height: 24),
-        ],
         Text(
           showFuture ? 'Próximos Eventos' : 'Eventos Pasados',
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 12),
-        ...rest.map(
+        ...events.map(
           (event) => Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: _SmallEventCard(event: event, past: !showFuture),
@@ -206,137 +196,7 @@ class _EventsList extends StatelessWidget {
   }
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.label, this.badge});
-
-  final String label;
-  final String? badge;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-            width: 4,
-            height: 24,
-            decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(99))),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(label,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-              overflow: TextOverflow.ellipsis),
-        ),
-        if (badge != null)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              badge!,
-              style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _FeaturedEventCard extends StatelessWidget {
-  const _FeaturedEventCard({required this.event});
-
-  final ClubEvent event;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 160,
-            color: AppColors.surfaceVariant,
-            child: event.imageUrl == null || event.imageUrl!.isEmpty
-                ? const Center(
-                    child: Icon(Icons.event, color: AppColors.muted, size: 48))
-                : Image.network(event.imageUrl!,
-                    width: double.infinity, fit: BoxFit.cover),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(event.title,
-                    style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Text(
-                  event.description,
-                  style: const TextStyle(fontSize: 12, color: AppColors.muted),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-                _InfoRow(
-                    icon: Icons.calendar_today,
-                    label: _formatDate(event.startsAt)),
-                const SizedBox(height: 4),
-                _InfoRow(
-                    icon: Icons.schedule, label: _formatTime(event.startsAt)),
-                const SizedBox(height: 6),
-                _InfoRow(
-                    icon: Icons.location_on,
-                    label: event.location,
-                    primary: true),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow(
-      {required this.icon, required this.label, this.primary = false});
-
-  final IconData icon;
-  final String label;
-  final bool primary;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon,
-            size: 14, color: primary ? AppColors.primary : AppColors.muted),
-        const SizedBox(width: 5),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: primary ? AppColors.primary : AppColors.muted,
-              fontWeight: primary ? FontWeight.w700 : FontWeight.w400,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SmallEventCard extends StatelessWidget {
+class _SmallEventCard extends ConsumerStatefulWidget {
   const _SmallEventCard({
     required this.event,
     this.past = false,
@@ -346,7 +206,66 @@ class _SmallEventCard extends StatelessWidget {
   final bool past;
 
   @override
+  ConsumerState<_SmallEventCard> createState() => _SmallEventCardState();
+}
+
+class _SmallEventCardState extends ConsumerState<_SmallEventCard> {
+  bool _deleting = false;
+
+  void _openEditSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _CreateEventSheet(event: widget.event),
+    );
+  }
+
+  Future<void> _deleteEvent() async {
+    if (_deleting) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Eliminar evento'),
+        content: Text('¿Quieres eliminar "${widget.event.title}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _deleting = true);
+    try {
+      await ref.read(eventActionsProvider).deleteEvent(widget.event);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Evento eliminado.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo eliminar el evento: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _deleting = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final event = widget.event;
+    final past = widget.past;
+    final canManageAsync = ref.watch(canManageEventProvider(event));
+
     return Opacity(
       opacity: past ? 0.58 : 1.0,
       child: Card(
@@ -417,6 +336,41 @@ class _SmallEventCard extends StatelessWidget {
               ),
               Icon(Icons.chevron_right,
                   color: past ? AppColors.muted : AppColors.primary),
+              canManageAsync.maybeWhen(
+                data: (canManage) => canManage
+                    ? PopupMenuButton<String>(
+                        tooltip: 'Acciones del evento',
+                        icon: _deleting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.more_vert),
+                        onSelected: (value) {
+                          if (value == 'edit') _openEditSheet();
+                          if (value == 'delete') _deleteEvent();
+                        },
+                        itemBuilder: (context) => const [
+                          PopupMenuItem(
+                            value: 'edit',
+                            child: ListTile(
+                              leading: Icon(Icons.edit_outlined),
+                              title: Text('Editar'),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: ListTile(
+                              leading: Icon(Icons.delete_outline),
+                              title: Text('Eliminar'),
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink(),
+                orElse: () => const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
@@ -464,7 +418,9 @@ class _AgendaEmptyState extends StatelessWidget {
 }
 
 class _CreateEventSheet extends ConsumerStatefulWidget {
-  const _CreateEventSheet();
+  const _CreateEventSheet({this.event});
+
+  final ClubEvent? event;
 
   @override
   ConsumerState<_CreateEventSheet> createState() => _CreateEventSheetState();
@@ -479,6 +435,26 @@ class _CreateEventSheetState extends ConsumerState<_CreateEventSheet> {
   TimeOfDay _start = const TimeOfDay(hour: 9, minute: 0);
   TimeOfDay _end = const TimeOfDay(hour: 10, minute: 0);
   bool _saving = false;
+
+  bool get _isEditing => widget.event != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final event = widget.event;
+    if (event == null) return;
+
+    _titleCtrl.text = event.title;
+    _descriptionCtrl.text = event.description;
+    _locationCtrl.text = event.location;
+    _date = DateTime(
+      event.startsAt.year,
+      event.startsAt.month,
+      event.startsAt.day,
+    );
+    _start = TimeOfDay.fromDateTime(event.startsAt);
+    _end = TimeOfDay.fromDateTime(event.endsAt);
+  }
 
   @override
   void dispose() {
@@ -540,25 +516,37 @@ class _CreateEventSheetState extends ConsumerState<_CreateEventSheet> {
 
     setState(() => _saving = true);
     try {
-      await ref.read(eventActionsProvider).createEvent(
-            EventInput(
-              title: _titleCtrl.text,
-              description: _descriptionCtrl.text,
-              location: _locationCtrl.text,
-              date: _date,
-              startTime: startDateTime,
-              endTime: endDateTime,
-            ),
-          );
+      final input = EventInput(
+        title: _titleCtrl.text,
+        description: _descriptionCtrl.text,
+        location: _locationCtrl.text,
+        date: _date,
+        startTime: startDateTime,
+        endTime: endDateTime,
+      );
+      final actions = ref.read(eventActionsProvider);
+      if (_isEditing) {
+        await actions.updateEvent(widget.event!, input);
+      } else {
+        await actions.createEvent(input);
+      }
       if (!mounted) return;
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Evento creado.')),
+        SnackBar(
+          content: Text(_isEditing ? 'Evento actualizado.' : 'Evento creado.'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo crear el evento: $e')),
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? 'No se pudo actualizar el evento: $e'
+                : 'No se pudo crear el evento: $e',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -583,9 +571,12 @@ class _CreateEventSheetState extends ConsumerState<_CreateEventSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Crear evento',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                Text(
+                  _isEditing ? 'Editar evento' : 'Crear evento',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -655,8 +646,10 @@ class _CreateEventSheetState extends ConsumerState<_CreateEventSheet> {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.add),
-                    label: const Text('CREAR EVENTO'),
+                        : Icon(_isEditing ? Icons.save_outlined : Icons.add),
+                    label: Text(
+                      _isEditing ? 'GUARDAR CAMBIOS' : 'CREAR EVENTO',
+                    ),
                   ),
                 ),
               ],
@@ -671,21 +664,6 @@ class _CreateEventSheetState extends ConsumerState<_CreateEventSheet> {
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/${date.year}';
-}
-
-String _formatTime(DateTime date) {
-  final hour = date.hour.toString().padLeft(2, '0');
-  final minute = date.minute.toString().padLeft(2, '0');
-  return '$hour:$minute';
-}
-
-String _badgeFor(DateTime date) {
-  final now = DateTime.now();
-  final today = DateTime(now.year, now.month, now.day);
-  final eventDay = DateTime(date.year, date.month, date.day);
-  if (eventDay == today) return 'HOY';
-  if (eventDay == today.add(const Duration(days: 1))) return 'MAÑANA';
-  return _formatDate(date);
 }
 
 String _month(DateTime date) {

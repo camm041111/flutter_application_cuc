@@ -1,10 +1,30 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/providers/supabase_provider.dart';
 
 // 1. Provider del Heatmap Colectivo (Llamada al nuevo RPC)
 final clubHeatmapProvider = FutureProvider.family<Map<DateTime, int>, String>((ref, clubId) async {
   final supabase = ref.read(supabaseClientProvider);
-  final response = await supabase.rpc('obtener_heatmap_colectivo', params: {'p_id_club': clubId});
+  late final List<dynamic> response;
+  try {
+    response = await supabase.rpc(
+      'obtener_heatmap_colectivo',
+      params: {'p_id_club': clubId},
+    );
+  } on PostgrestException catch (e) {
+    if (e.code != 'PGRST202' && e.code != '42883') rethrow;
+    response = await supabase
+        .from('logs_actividad')
+        .select('fecha_creacion, perfiles!inner(id_club)')
+        .eq('perfiles.id_club', clubId)
+        .gte(
+          'fecha_creacion',
+          DateTime.now()
+              .subtract(const Duration(days: 26 * 7))
+              .toIso8601String(),
+        );
+    return _heatmapFromActivityLogs(response);
+  }
 
   final Map<DateTime, int> heatmapData = {};
   for (var row in response) {
@@ -13,6 +33,19 @@ final clubHeatmapProvider = FutureProvider.family<Map<DateTime, int>, String>((r
   }
   return heatmapData;
 });
+
+Map<DateTime, int> _heatmapFromActivityLogs(List<dynamic> rows) {
+  final heatmapData = <DateTime, int>{};
+  for (final row in rows) {
+    final value = (row as Map)['fecha_creacion'];
+    final date = DateTime.tryParse((value ?? '').toString());
+    if (date == null) continue;
+    final key = DateTime(date.year, date.month, date.day);
+    final next = (heatmapData[key] ?? 0) + 1;
+    heatmapData[key] = next > 4 ? 4 : next;
+  }
+  return heatmapData;
+}
 
 // 2. Provider del Directorio (Trae solo la información esencial)
 // Retorna un Record con dos listas: activos e inactivos/bajas

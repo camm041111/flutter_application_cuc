@@ -9,6 +9,8 @@ import '../../club/screens/club_profile_screen.dart';
 import '../../repository/repository_screen.dart';
 import '../providers/profile_providers.dart';
 
+enum _AvatarAction { view, change }
+
 class ProfileHeader extends ConsumerStatefulWidget {
   const ProfileHeader({
     super.key,
@@ -25,6 +27,92 @@ class ProfileHeader extends ConsumerStatefulWidget {
 
 class _ProfileHeaderState extends ConsumerState<ProfileHeader> {
   bool _uploadingAvatar = false;
+
+  Future<void> _handleAvatarTap() async {
+    final hasAvatar = widget.profile.urlAvatar?.isNotEmpty == true;
+
+    if (!widget.isOwner) {
+      if (hasAvatar) _openAvatarPreview();
+      return;
+    }
+
+    final action = await showModalBottomSheet<_AvatarAction>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                enabled: hasAvatar,
+                leading: const Icon(Icons.image_outlined),
+                title: const Text('Ver foto'),
+                onTap: hasAvatar
+                    ? () => Navigator.pop(context, _AvatarAction.view)
+                    : null,
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined),
+                title: const Text('Cambiar foto'),
+                onTap: () => Navigator.pop(context, _AvatarAction.change),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted || action == null) return;
+    if (action == _AvatarAction.view) _openAvatarPreview();
+    if (action == _AvatarAction.change) await _pickAvatar();
+  }
+
+  void _openAvatarPreview() {
+    final avatarUrl = widget.profile.urlAvatar;
+    if (avatarUrl == null || avatarUrl.isEmpty) return;
+
+    showDialog<void>(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: AppColors.background,
+        insetPadding: const EdgeInsets.all(18),
+        child: Stack(
+          children: [
+            AspectRatio(
+              aspectRatio: 1,
+              child: InteractiveViewer(
+                child: Image.network(
+                  avatarUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Center(
+                    child: Icon(
+                      Icons.broken_image_outlined,
+                      color: AppColors.muted,
+                      size: 44,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IconButton.filled(
+                tooltip: 'Cerrar',
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.close),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _pickAvatar() async {
     if (!widget.isOwner || _uploadingAvatar) return;
@@ -94,7 +182,7 @@ class _ProfileHeaderState extends ConsumerState<ProfileHeader> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: widget.isOwner ? _pickAvatar : null,
+            onTap: _uploadingAvatar ? null : _handleAvatarTap,
             child: Stack(
               children: [
                 Container(

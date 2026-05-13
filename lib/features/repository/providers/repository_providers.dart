@@ -31,6 +31,8 @@ class RepositoryFilters {
     this.date,
     this.clubId = '',
     this.category = '',
+    this.area = '',
+    this.sort = RepositorySort.newest,
   });
 
   final String search;
@@ -38,6 +40,8 @@ class RepositoryFilters {
   final DateTime? date;
   final String clubId;
   final String category;
+  final String area;
+  final RepositorySort sort;
 
   int get activeCount {
     return [
@@ -46,11 +50,42 @@ class RepositoryFilters {
       date,
       clubId.trim(),
       category.trim(),
+      area.trim(),
     ].where((value) {
       if (value == null) return false;
       return value is String ? value.isNotEmpty : true;
     }).length;
   }
+
+  RepositoryFilters copyWith({
+    String? search,
+    String? author,
+    DateTime? date,
+    bool clearDate = false,
+    String? clubId,
+    String? category,
+    String? area,
+    RepositorySort? sort,
+  }) {
+    return RepositoryFilters(
+      search: search ?? this.search,
+      author: author ?? this.author,
+      date: clearDate ? null : date ?? this.date,
+      clubId: clubId ?? this.clubId,
+      category: category ?? this.category,
+      area: area ?? this.area,
+      sort: sort ?? this.sort,
+    );
+  }
+}
+
+enum RepositorySort {
+  newest('Más recientes'),
+  oldest('Más antiguos'),
+  title('Título A-Z');
+
+  const RepositorySort(this.label);
+  final String label;
 }
 
 class RepositoryDocument {
@@ -65,6 +100,9 @@ class RepositoryDocument {
     required this.authorName,
     required this.clubName,
     required this.status,
+    required this.description,
+    required this.area,
+    required this.tags,
   });
 
   final String id;
@@ -77,6 +115,9 @@ class RepositoryDocument {
   final String authorName;
   final String clubName;
   final String status;
+  final String description;
+  final String area;
+  final List<String> tags;
 
   factory RepositoryDocument.fromJson(Map<String, dynamic> json) {
     final profile = json['perfiles'] as Map<String, dynamic>?;
@@ -95,6 +136,9 @@ class RepositoryDocument {
           (profile?['nombre_completo'] ?? 'Autor no disponible').toString(),
       clubName: (club?['nombre'] ?? 'Club no disponible').toString(),
       status: (json['estado'] ?? 'pendiente').toString(),
+      description: (json['descripcion'] ?? '').toString(),
+      area: (json['area_conocimiento'] ?? '').toString(),
+      tags: _tags(json['etiquetas']),
     );
   }
 
@@ -103,6 +147,16 @@ class RepositoryDocument {
       return value.first.toString();
     }
     return '';
+  }
+
+  static List<String> _tags(dynamic value) {
+    if (value is List) {
+      return value
+          .map((item) => item.toString().trim())
+          .where((item) => item.isNotEmpty)
+          .toList();
+    }
+    return const [];
   }
 }
 
@@ -127,12 +181,9 @@ final repositoryDocumentsProvider =
   dynamic query = supabase
       .from('publicaciones_repositorio')
       .select(
-          'id, id_autor, id_club, titulo, categoria, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
+          'id, id_autor, id_club, titulo, descripcion, categoria, area_conocimiento, etiquetas, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
       .eq('estado', 'aprobado');
 
-  if (filters.search.trim().isNotEmpty) {
-    query = query.ilike('titulo', '%${filters.search.trim()}%');
-  }
   if (filters.date != null) {
     final start =
         DateTime(filters.date!.year, filters.date!.month, filters.date!.day);
@@ -147,8 +198,23 @@ final repositoryDocumentsProvider =
   if (filters.category.isNotEmpty) {
     query = query.eq('categoria', filters.category);
   }
+  if (filters.area.isNotEmpty) {
+    query = query.eq('area_conocimiento', filters.area);
+  }
 
-  final response = await query.order('fecha_creacion', ascending: false);
+  switch (filters.sort) {
+    case RepositorySort.newest:
+      query = query.order('fecha_creacion', ascending: false);
+      break;
+    case RepositorySort.oldest:
+      query = query.order('fecha_creacion', ascending: true);
+      break;
+    case RepositorySort.title:
+      query = query.order('titulo', ascending: true);
+      break;
+  }
+
+  final response = await query;
   final docs = (response as List<dynamic>)
       .map((item) =>
           RepositoryDocument.fromJson(Map<String, dynamic>.from(item as Map)))
@@ -157,13 +223,23 @@ final repositoryDocumentsProvider =
     return doc.authorName
         .toLowerCase()
         .contains(filters.author.trim().toLowerCase());
+  }).where((doc) {
+    final search = filters.search.trim().toLowerCase();
+    if (search.isEmpty) return true;
+    return doc.title.toLowerCase().contains(search) ||
+        doc.description.toLowerCase().contains(search) ||
+        doc.tags.any((tag) => tag.toLowerCase().contains(search));
   }).toList();
 
   return docs;
 });
 
 final repositoryCatalogProvider = FutureProvider.autoDispose<
-    ({Map<String, String> clubs, Map<String, String> categories})>((ref) async {
+    ({
+      Map<String, String> clubs,
+      Map<String, String> categories,
+      Map<String, String> areas,
+    })>((ref) async {
   final supabase = ref.read(supabaseClientProvider);
   final results = await Future.wait([
     supabase.from('clubes').select('id, nombre').order('nombre'),
@@ -171,6 +247,10 @@ final repositoryCatalogProvider = FutureProvider.autoDispose<
         .from('publicaciones_repositorio')
         .select('categoria')
         .order('categoria'),
+    supabase
+        .from('publicaciones_repositorio')
+        .select('area_conocimiento')
+        .order('area_conocimiento'),
   ]);
 
   final clubs = <String, String>{'': 'Todos los clubes'};
@@ -184,20 +264,30 @@ final repositoryCatalogProvider = FutureProvider.autoDispose<
     if (value.isNotEmpty) categories[value] = value;
   }
 
-  return (clubs: clubs, categories: categories);
+  final areas = <String, String>{'': 'Todas las áreas'};
+  for (final row in results[2]) {
+    final value = (row['area_conocimiento'] ?? '').toString();
+    if (value.isNotEmpty) areas[value] = value;
+  }
+
+  return (clubs: clubs, categories: categories, areas: areas);
 });
 
 class RepositoryUploadInput {
   const RepositoryUploadInput({
     required this.title,
+    required this.description,
     required this.category,
     required this.area,
+    required this.tags,
     required this.file,
   });
 
   final String title;
+  final String description;
   final String category;
   final String area;
+  final List<String> tags;
   final PlatformFile file;
 }
 
@@ -250,11 +340,10 @@ class RepositoryActions {
         .select('id_club, rol')
         .eq('id', user.id)
         .single();
-    final role = (profile['rol'] ?? '').toString();
-    final status =
-        role == 'coordinador' || role == 'lider' ? 'aprobado' : 'pendiente';
-
     final extension = input.file.extension?.toLowerCase() ?? 'bin';
+    if (!_allowedExtensions.contains(extension)) {
+      throw Exception('Formato no permitido. Usa PDF, DOC, DOCX, TXT, JPG, PNG o JPEG.');
+    }
     final safeName =
         input.file.name.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
     final path =
@@ -272,22 +361,22 @@ class RepositoryActions {
     final url = supabase.storage.from('repositorio').getPublicUrl(path);
     await supabase.from('publicaciones_repositorio').insert({
       'titulo': input.title.trim(),
-      'descripcion': '',
+      'descripcion': input.description.trim(),
       'categoria': repositoryCategoryOptions.containsKey(input.category)
           ? input.category
           : repositoryCategoryOptions.keys.first,
       'area_conocimiento': repositoryAreaOptions.containsKey(input.area)
           ? input.area
           : repositoryAreaOptions.keys.first,
-      'etiquetas': <String>[],
+      'etiquetas': input.tags.take(4).toList(),
       'urls_archivos': [url],
       'id_autor': user.id,
       'id_club': profile['id_club'],
-      'estado': status,
+      'estado': 'pendiente',
     });
 
     ref.invalidate(repositoryDocumentsProvider);
-    return status;
+    return 'pendiente';
   }
 
   Future<void> deleteDocument(RepositoryDocument document) async {
@@ -311,7 +400,7 @@ class RepositoryActions {
   }
 
   String? _storagePathFromPublicUrl(String url) {
-    final marker = '/storage/v1/object/public/repositorio/';
+    const marker = '/storage/v1/object/public/repositorio/';
     final index = url.indexOf(marker);
     if (index == -1) return null;
     final rawPath = url.substring(index + marker.length);
@@ -330,6 +419,8 @@ class RepositoryActions {
         return 'application/vnd.ms-excel';
       case 'xlsx':
         return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'txt':
+        return 'text/plain';
       case 'png':
         return 'image/png';
       case 'jpg':
@@ -339,4 +430,14 @@ class RepositoryActions {
         return 'application/octet-stream';
     }
   }
+
+  static const _allowedExtensions = {
+    'pdf',
+    'doc',
+    'docx',
+    'txt',
+    'jpg',
+    'jpeg',
+    'png',
+  };
 }

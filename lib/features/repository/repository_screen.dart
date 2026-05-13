@@ -28,15 +28,9 @@ class _RepositoryScreenState extends ConsumerState<RepositoryScreen> {
 
   void _applySearch(String value) {
     final current = ref.read(repositoryFiltersProvider);
-    ref.read(repositoryFiltersProvider.notifier).setFilters(
-          RepositoryFilters(
-            search: value,
-            author: current.author,
-            date: current.date,
-            clubId: current.clubId,
-            category: current.category,
-          ),
-        );
+    ref
+        .read(repositoryFiltersProvider.notifier)
+        .setFilters(current.copyWith(search: value));
   }
 
   void _openFilterSheet() {
@@ -83,6 +77,15 @@ class _RepositoryScreenState extends ConsumerState<RepositoryScreen> {
                 _FilterLauncher(
                   activeFilters: filters.activeCount,
                   onTap: _openFilterSheet,
+                ),
+                const SizedBox(height: 10),
+                _SortBar(
+                  value: filters.sort,
+                  onChanged: (sort) {
+                    ref.read(repositoryFiltersProvider.notifier).setFilters(
+                          filters.copyWith(sort: sort),
+                        );
+                  },
                 ),
                 const SizedBox(height: 16),
                 docsAsync.when(
@@ -344,19 +347,40 @@ class _RepoCardState extends ConsumerState<_RepoCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
+                  if (item.description.isNotEmpty) ...[
+                    Text(
+                      item.description,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.onSurface),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   Text(
-                    '${item.category} · ${item.authorName}',
+                    '${_labelFor(repositoryCategoryOptions, item.category)} · ${item.authorName}',
                     style:
                         const TextStyle(fontSize: 11, color: AppColors.muted),
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${_formatDate(item.createdAt)} · ${item.clubName}',
+                    '${_formatDate(item.createdAt)} · ${item.clubName}'
+                    '${item.area.isEmpty ? '' : ' · ${_labelFor(repositoryAreaOptions, item.area)}'}',
                     style:
                         const TextStyle(fontSize: 10, color: AppColors.muted),
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (item.tags.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: item.tags
+                          .map((tag) => _TagChip(label: tag))
+                          .toList(),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -420,6 +444,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
   late DateTime? _selectedDate;
   late String _club;
   late String _category;
+  late String _area;
 
   @override
   void initState() {
@@ -429,6 +454,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
     _selectedDate = filters.date;
     _club = filters.clubId;
     _category = filters.category;
+    _area = filters.area;
   }
 
   @override
@@ -443,18 +469,20 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
       _selectedDate = null;
       _club = '';
       _category = '';
+      _area = '';
     });
   }
 
   void _apply() {
     final current = ref.read(repositoryFiltersProvider);
     ref.read(repositoryFiltersProvider.notifier).setFilters(
-          RepositoryFilters(
-            search: current.search,
+          current.copyWith(
             author: _authorCtrl.text,
             date: _selectedDate,
+            clearDate: _selectedDate == null,
             clubId: _club,
             category: _category,
+            area: _area,
           ),
         );
     Navigator.pop(context);
@@ -552,6 +580,13 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                             onChanged: (v) =>
                                 setState(() => _category = v ?? ''),
                           ),
+                          const SizedBox(height: 16),
+                          _FilterDropdown(
+                            label: 'ÁREA DE CONOCIMIENTO',
+                            value: _area,
+                            options: catalog.areas,
+                            onChanged: (v) => setState(() => _area = v ?? ''),
+                          ),
                         ],
                       ),
                     ),
@@ -595,6 +630,8 @@ class _UploadDocumentSheet extends ConsumerStatefulWidget {
 
 class _UploadDocumentSheetState extends ConsumerState<_UploadDocumentSheet> {
   final _titleCtrl = TextEditingController();
+  final _descriptionCtrl = TextEditingController();
+  final _tagsCtrl = TextEditingController();
   String _category = repositoryCategoryOptions.keys.first;
   String _area = repositoryAreaOptions.keys.first;
   PlatformFile? _file;
@@ -603,11 +640,25 @@ class _UploadDocumentSheetState extends ConsumerState<_UploadDocumentSheet> {
   @override
   void dispose() {
     _titleCtrl.dispose();
+    _descriptionCtrl.dispose();
+    _tagsCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(withData: true);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const [
+        'pdf',
+        'doc',
+        'docx',
+        'txt',
+        'jpg',
+        'jpeg',
+        'png',
+      ],
+      withData: true,
+    );
     final file = result?.files.single;
     if (file == null) return;
 
@@ -636,8 +687,10 @@ class _UploadDocumentSheetState extends ConsumerState<_UploadDocumentSheet> {
       final status = await ref.read(repositoryActionsProvider).uploadDocument(
             RepositoryUploadInput(
               title: _titleCtrl.text,
+              description: _descriptionCtrl.text,
               category: _category,
               area: _area,
+              tags: _parseTags(_tagsCtrl.text),
               file: file,
             ),
           );
@@ -688,6 +741,17 @@ class _UploadDocumentSheetState extends ConsumerState<_UploadDocumentSheet> {
                 decoration: const InputDecoration(hintText: 'Título'),
               ),
               const SizedBox(height: 12),
+              TextField(
+                controller: _descriptionCtrl,
+                minLines: 2,
+                maxLines: 4,
+                maxLength: 250,
+                decoration: const InputDecoration(
+                  hintText: 'Descripción breve',
+                  counterText: '',
+                ),
+              ),
+              const SizedBox(height: 12),
               _FilterDropdown(
                 label: 'CATEGORÍA',
                 value: _category,
@@ -695,6 +759,13 @@ class _UploadDocumentSheetState extends ConsumerState<_UploadDocumentSheet> {
                 onChanged: (value) {
                   if (value != null) setState(() => _category = value);
                 },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _tagsCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'Etiquetas separadas por coma (máx. 4)',
+                ),
               ),
               const SizedBox(height: 12),
               _FilterDropdown(
@@ -731,6 +802,64 @@ class _UploadDocumentSheetState extends ConsumerState<_UploadDocumentSheet> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SortBar extends StatelessWidget {
+  const _SortBar({required this.value, required this.onChanged});
+
+  final RepositorySort value;
+  final ValueChanged<RepositorySort> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: RepositorySort.values.map((sort) {
+          final selected = value == sort;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(sort.label),
+              selected: selected,
+              onSelected: (_) => onChanged(sort),
+              selectedColor: AppColors.primary.withValues(alpha: 0.18),
+              labelStyle: TextStyle(
+                color: selected ? AppColors.primary : AppColors.muted,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              side: BorderSide(
+                color: selected ? AppColors.primary : AppColors.border,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _TagChip extends StatelessWidget {
+  const _TagChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        label.startsWith('#') ? label : '#$label',
+        style: const TextStyle(fontSize: 10, color: AppColors.muted),
       ),
     );
   }
@@ -853,4 +982,17 @@ class _EmptyState extends StatelessWidget {
 String _formatDate(DateTime date) {
   return '${date.day.toString().padLeft(2, '0')}/'
       '${date.month.toString().padLeft(2, '0')}/${date.year}';
+}
+
+String _labelFor(Map<String, String> options, String value) {
+  return options[value] ?? value;
+}
+
+List<String> _parseTags(String value) {
+  return value
+      .split(',')
+      .map((tag) => tag.trim().replaceFirst(RegExp(r'^#+'), ''))
+      .where((tag) => tag.isNotEmpty)
+      .take(4)
+      .toList();
 }
