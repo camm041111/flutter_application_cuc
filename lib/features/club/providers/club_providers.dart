@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/cache/app_cache_service.dart';
 import '../../../core/providers/supabase_provider.dart';
 
 // 1. Provider del Heatmap Colectivo (Llamada al nuevo RPC)
@@ -50,49 +51,100 @@ Map<DateTime, int> _heatmapFromActivityLogs(List<dynamic> rows) {
 // 2. Provider del Directorio (Trae solo la información esencial)
 // Retorna un Record con dos listas: activos e inactivos/bajas
 final clubDirectoryProvider = FutureProvider.family<({List<dynamic> activos, List<dynamic> historico}), String>((ref, clubId) async {
+  final cache = ref.read(appCacheServiceProvider);
   final supabase = ref.read(supabaseClientProvider);
 
-  // Optimizamos el payload solicitando SOLO las columnas que la UI necesita renderizar
-  final response = await supabase
-      .from('perfiles')
-      .select('id, nombre_completo, url_avatar, rol, estado')
-      .eq('id_club', clubId)
-  // Excluimos a los 'registrados' porque aún no son miembros oficiales
-      .neq('estado', 'registrado')
-      .order('rol', ascending: true); // Coordinadores primero
+  return cache.staleWhileRevalidate<({List<dynamic> activos, List<dynamic> historico})>(
+    ref: ref,
+    key: 'club:$clubId:directory',
+    ttl: CacheTtl.club,
+    fetch: () async {
+      // Optimizamos el payload solicitando SOLO las columnas que la UI necesita renderizar
+      final response = await supabase
+          .from('perfiles')
+          .select('id, nombre_completo, url_avatar, rol, estado')
+          .eq('id_club', clubId)
+          // Excluimos a los 'registrados' porque aún no son miembros oficiales
+          .neq('estado', 'registrado')
+          .order('rol', ascending: true); // Coordinadores primero
 
-  final activos = response.where((user) => user['estado'] == 'activo').toList();
-  final historico = response.where((user) => user['estado'] != 'activo').toList();
+      final activos = response.where((user) => user['estado'] == 'activo').toList();
+      final historico = response.where((user) => user['estado'] != 'activo').toList();
 
-  return (activos: activos, historico: historico);
+      return (activos: activos, historico: historico);
+    },
+    fromJson: _directoryFromJson,
+    toJson: _directoryToJson,
+  );
 });
 
 // 3. Provider de la Identidad del Club
 final clubIdentityProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, clubId) async {
+  final cache = ref.read(appCacheServiceProvider);
   final supabase = ref.read(supabaseClientProvider);
 
-  // 🚀 JOIN para traer los datos del club Y el acrónimo de su división
-  final response = await supabase
-      .from('clubes')
-      .select('*, divisiones_academicas(acronimo)')
-      .eq('id', clubId)
-      .single();
+  return cache.staleWhileRevalidate<Map<String, dynamic>>(
+    ref: ref,
+    key: 'club:$clubId:identity',
+    ttl: CacheTtl.club,
+    fetch: () async {
+      // 🚀 JOIN para traer los datos del club Y el acrónimo de su división
+      final response = await supabase
+          .from('clubes')
+          .select('*, divisiones_academicas(acronimo)')
+          .eq('id', clubId)
+          .single();
 
-  return response;
+      return response;
+    },
+    fromJson: (json) => Map<String, dynamic>.from(json as Map),
+    toJson: (value) => value,
+  );
 });
 
 // 4. Provider de Métricas de Repositorio (Conteo exacto en servidor)
 final clubDocsCountProvider = FutureProvider.family<int, String>((ref, clubId) async {
+  final cache = ref.read(appCacheServiceProvider);
   final supabase = ref.read(supabaseClientProvider);
 
-  // 🛡️ Seguridad y Rendimiento:
-  // 1. Usamos count() para que PostgreSQL solo devuelva un número (int), no el JSON completo.
-  // 2. Filtramos estrictamente por estado 'aprobado' para respetar el flujo de curaduría.
-  final count = await supabase
-      .from('publicaciones_repositorio')
-      .count()
-      .eq('id_club', clubId)
-      .eq('estado', 'aprobado');
+  return cache.staleWhileRevalidate<int>(
+    ref: ref,
+    key: 'club:$clubId:docs_count',
+    ttl: CacheTtl.repository,
+    fetch: () async {
+      // 🛡️ Seguridad y Rendimiento:
+      // 1. Usamos count() para que PostgreSQL solo devuelva un número (int), no el JSON completo.
+      // 2. Filtramos estrictamente por estado 'aprobado' para respetar el flujo de curaduría.
+      final count = await supabase
+          .from('publicaciones_repositorio')
+          .count()
+          .eq('id_club', clubId)
+          .eq('estado', 'aprobado');
 
-  return count;
+      return count;
+    },
+    fromJson: (json) => json as int,
+    toJson: (value) => value,
+  );
 });
+
+({List<dynamic> activos, List<dynamic> historico}) _directoryFromJson(Object? json) {
+  final map = Map<String, dynamic>.from(json as Map);
+  return (
+    activos: (map['activos'] as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList(),
+    historico: (map['historico'] as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList(),
+  );
+}
+
+Map<String, dynamic> _directoryToJson(
+  ({List<dynamic> activos, List<dynamic> historico}) value,
+) {
+  return {
+    'activos': value.activos,
+    'historico': value.historico,
+  };
+}

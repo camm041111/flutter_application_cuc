@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/cache/app_cache_service.dart';
 import '../../../core/providers/supabase_provider.dart';
 
 const repositoryFileLimitBytes = 10 * 1024 * 1024;
@@ -42,6 +43,18 @@ class RepositoryFilters {
   final String category;
   final String area;
   final RepositorySort sort;
+
+  String get cacheKey {
+    return [
+      search.trim().toLowerCase(),
+      author.trim().toLowerCase(),
+      date?.toIso8601String().split('T').first ?? '',
+      clubId.trim(),
+      category.trim(),
+      area.trim(),
+      sort.name,
+    ].map(Uri.encodeComponent).join('|');
+  }
 
   int get activeCount {
     return [
@@ -142,6 +155,24 @@ class RepositoryDocument {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'titulo': title,
+      'categoria': category,
+      'fecha_creacion': createdAt.toIso8601String(),
+      'urls_archivos': fileUrl.isEmpty ? <String>[] : [fileUrl],
+      'id_autor': authorId,
+      'id_club': clubId,
+      'perfiles': {'nombre_completo': authorName},
+      'clubes': {'nombre': clubName},
+      'estado': status,
+      'descripcion': description,
+      'area_conocimiento': area,
+      'etiquetas': tags,
+    };
+  }
+
   static String _firstFileUrl(dynamic value) {
     if (value is List && value.isNotEmpty) {
       return value.first.toString();
@@ -176,62 +207,75 @@ class RepositoryFiltersNotifier extends Notifier<RepositoryFilters> {
 final repositoryDocumentsProvider =
     FutureProvider.autoDispose<List<RepositoryDocument>>((ref) async {
   final filters = ref.watch(repositoryFiltersProvider);
+  final cache = ref.read(appCacheServiceProvider);
   final supabase = ref.read(supabaseClientProvider);
 
-  dynamic query = supabase
-      .from('publicaciones_repositorio')
-      .select(
-          'id, id_autor, id_club, titulo, descripcion, categoria, area_conocimiento, etiquetas, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
-      .eq('estado', 'aprobado');
+  return cache.staleWhileRevalidate<List<RepositoryDocument>>(
+    ref: ref,
+    key: 'repository:documents:${filters.cacheKey}',
+    ttl: CacheTtl.repository,
+    fetch: () async {
+      dynamic query = supabase
+          .from('publicaciones_repositorio')
+          .select(
+              'id, id_autor, id_club, titulo, descripcion, categoria, area_conocimiento, etiquetas, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
+          .eq('estado', 'aprobado');
 
-  if (filters.date != null) {
-    final start =
-        DateTime(filters.date!.year, filters.date!.month, filters.date!.day);
-    final end = start.add(const Duration(days: 1));
-    query = query
-        .gte('fecha_creacion', start.toIso8601String())
-        .lt('fecha_creacion', end.toIso8601String());
-  }
-  if (filters.clubId.isNotEmpty) {
-    query = query.eq('id_club', filters.clubId);
-  }
-  if (filters.category.isNotEmpty) {
-    query = query.eq('categoria', filters.category);
-  }
-  if (filters.area.isNotEmpty) {
-    query = query.eq('area_conocimiento', filters.area);
-  }
+      if (filters.date != null) {
+        final start =
+            DateTime(filters.date!.year, filters.date!.month, filters.date!.day);
+        final end = start.add(const Duration(days: 1));
+        query = query
+            .gte('fecha_creacion', start.toIso8601String())
+            .lt('fecha_creacion', end.toIso8601String());
+      }
+      if (filters.clubId.isNotEmpty) {
+        query = query.eq('id_club', filters.clubId);
+      }
+      if (filters.category.isNotEmpty) {
+        query = query.eq('categoria', filters.category);
+      }
+      if (filters.area.isNotEmpty) {
+        query = query.eq('area_conocimiento', filters.area);
+      }
 
-  switch (filters.sort) {
-    case RepositorySort.newest:
-      query = query.order('fecha_creacion', ascending: false);
-      break;
-    case RepositorySort.oldest:
-      query = query.order('fecha_creacion', ascending: true);
-      break;
-    case RepositorySort.title:
-      query = query.order('titulo', ascending: true);
-      break;
-  }
+      switch (filters.sort) {
+        case RepositorySort.newest:
+          query = query.order('fecha_creacion', ascending: false);
+          break;
+        case RepositorySort.oldest:
+          query = query.order('fecha_creacion', ascending: true);
+          break;
+        case RepositorySort.title:
+          query = query.order('titulo', ascending: true);
+          break;
+      }
 
-  final response = await query;
-  final docs = (response as List<dynamic>)
-      .map((item) =>
-          RepositoryDocument.fromJson(Map<String, dynamic>.from(item as Map)))
-      .where((doc) {
-    if (filters.author.trim().isEmpty) return true;
-    return doc.authorName
-        .toLowerCase()
-        .contains(filters.author.trim().toLowerCase());
-  }).where((doc) {
-    final search = filters.search.trim().toLowerCase();
-    if (search.isEmpty) return true;
-    return doc.title.toLowerCase().contains(search) ||
-        doc.description.toLowerCase().contains(search) ||
-        doc.tags.any((tag) => tag.toLowerCase().contains(search));
-  }).toList();
+      final response = await query;
+      final docs = (response as List<dynamic>)
+          .map((item) =>
+              RepositoryDocument.fromJson(Map<String, dynamic>.from(item as Map)))
+          .where((doc) {
+        if (filters.author.trim().isEmpty) return true;
+        return doc.authorName
+            .toLowerCase()
+            .contains(filters.author.trim().toLowerCase());
+      }).where((doc) {
+        final search = filters.search.trim().toLowerCase();
+        if (search.isEmpty) return true;
+        return doc.title.toLowerCase().contains(search) ||
+            doc.description.toLowerCase().contains(search) ||
+            doc.tags.any((tag) => tag.toLowerCase().contains(search));
+      }).toList();
 
-  return docs;
+      return docs;
+    },
+    fromJson: (json) => (json as List<dynamic>)
+        .map((item) =>
+            RepositoryDocument.fromJson(Map<String, dynamic>.from(item as Map)))
+        .toList(),
+    toJson: (value) => value.map((doc) => doc.toJson()).toList(),
+  );
 });
 
 final repositoryCatalogProvider = FutureProvider.autoDispose<
@@ -240,38 +284,81 @@ final repositoryCatalogProvider = FutureProvider.autoDispose<
       Map<String, String> categories,
       Map<String, String> areas,
     })>((ref) async {
+  final cache = ref.read(appCacheServiceProvider);
   final supabase = ref.read(supabaseClientProvider);
-  final results = await Future.wait([
-    supabase.from('clubes').select('id, nombre').order('nombre'),
-    supabase
-        .from('publicaciones_repositorio')
-        .select('categoria')
-        .order('categoria'),
-    supabase
-        .from('publicaciones_repositorio')
-        .select('area_conocimiento')
-        .order('area_conocimiento'),
-  ]);
 
-  final clubs = <String, String>{'': 'Todos los clubes'};
-  for (final row in results[0]) {
-    clubs[row['id'].toString()] = row['nombre'].toString();
-  }
+  return cache.staleWhileRevalidate<
+      ({
+        Map<String, String> clubs,
+        Map<String, String> categories,
+        Map<String, String> areas,
+      })>(
+    ref: ref,
+    key: 'repository:catalog',
+    ttl: CacheTtl.catalogs,
+    fetch: () async {
+      final results = await Future.wait([
+        supabase.from('clubes').select('id, nombre').order('nombre'),
+        supabase
+            .from('publicaciones_repositorio')
+            .select('categoria')
+            .order('categoria'),
+        supabase
+            .from('publicaciones_repositorio')
+            .select('area_conocimiento')
+            .order('area_conocimiento'),
+      ]);
 
-  final categories = <String, String>{'': 'Todas las categorías'};
-  for (final row in results[1]) {
-    final value = (row['categoria'] ?? '').toString();
-    if (value.isNotEmpty) categories[value] = value;
-  }
+      final clubs = <String, String>{'': 'Todos los clubes'};
+      for (final row in results[0]) {
+        clubs[row['id'].toString()] = row['nombre'].toString();
+      }
 
-  final areas = <String, String>{'': 'Todas las áreas'};
-  for (final row in results[2]) {
-    final value = (row['area_conocimiento'] ?? '').toString();
-    if (value.isNotEmpty) areas[value] = value;
-  }
+      final categories = <String, String>{'': 'Todas las categorías'};
+      for (final row in results[1]) {
+        final value = (row['categoria'] ?? '').toString();
+        if (value.isNotEmpty) categories[value] = value;
+      }
 
-  return (clubs: clubs, categories: categories, areas: areas);
+      final areas = <String, String>{'': 'Todas las áreas'};
+      for (final row in results[2]) {
+        final value = (row['area_conocimiento'] ?? '').toString();
+        if (value.isNotEmpty) areas[value] = value;
+      }
+
+      return (clubs: clubs, categories: categories, areas: areas);
+    },
+    fromJson: _repositoryCatalogFromJson,
+    toJson: _repositoryCatalogToJson,
+  );
 });
+
+({
+  Map<String, String> clubs,
+  Map<String, String> categories,
+  Map<String, String> areas,
+}) _repositoryCatalogFromJson(Object? json) {
+  final map = Map<String, dynamic>.from(json as Map);
+  return (
+    clubs: Map<String, String>.from(map['clubs'] as Map),
+    categories: Map<String, String>.from(map['categories'] as Map),
+    areas: Map<String, String>.from(map['areas'] as Map),
+  );
+}
+
+Map<String, dynamic> _repositoryCatalogToJson(
+  ({
+    Map<String, String> clubs,
+    Map<String, String> categories,
+    Map<String, String> areas,
+  }) value,
+) {
+  return {
+    'clubs': value.clubs,
+    'categories': value.categories,
+    'areas': value.areas,
+  };
+}
 
 class RepositoryUploadInput {
   const RepositoryUploadInput({
@@ -375,6 +462,7 @@ class RepositoryActions {
       'estado': 'pendiente',
     });
 
+    await ref.read(appCacheServiceProvider).invalidatePrefix('repository:');
     ref.invalidate(repositoryDocumentsProvider);
     return 'pendiente';
   }
@@ -396,6 +484,10 @@ class RepositoryActions {
         .delete()
         .eq('id', document.id);
 
+    await ref.read(appCacheServiceProvider).invalidatePrefix('repository:');
+    await ref
+        .read(appCacheServiceProvider)
+        .invalidate('club:${document.clubId}:docs_count');
     ref.invalidate(repositoryDocumentsProvider);
   }
 

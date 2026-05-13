@@ -1,12 +1,17 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../cache/app_cache_service.dart';
+
 // Creamos un Provider de Riverpod para acceder a este servicio desde cualquier pantalla
 final authServiceProvider = Provider<AuthService>((ref) {
-  return AuthService();
+  return AuthService(ref);
 });
 
 class AuthService {
+  AuthService(this._ref);
+
+  final Ref _ref;
   final SupabaseClient _supabase = Supabase.instance.client;
 
   /// Metodo para registrar un nuevo usuario
@@ -84,6 +89,7 @@ class AuthService {
 
   /// Cerrar sesión
   Future<void> cerrarSesion() async {
+    await _ref.read(appCacheServiceProvider).clearUserScoped();
     await _supabase.auth.signOut();
   }
 }

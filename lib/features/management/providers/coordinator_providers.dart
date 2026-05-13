@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/cache/app_cache_service.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../../club/providers/club_providers.dart';
 import '../../repository/providers/repository_providers.dart';
@@ -64,6 +65,9 @@ class CoordinatorActions {
           .update({'estado': 'activo'}).eq('id', targetUserId);
 
       // Limpiamos la caché de los providers afectados para reflejar cambios en tiempo real
+      final cache = ref.read(appCacheServiceProvider);
+      await cache.invalidate('profile:$targetUserId');
+      await cache.invalidatePrefix('club:');
       ref.invalidate(pendingMembersProvider);
       ref.invalidate(clubDirectoryProvider);
 
@@ -102,6 +106,9 @@ class CoordinatorActions {
         }).eq('id', documentId);
       }
 
+      final cache = ref.read(appCacheServiceProvider);
+      await cache.invalidatePrefix('repository:');
+      await cache.invalidatePrefix('club:');
       ref.invalidate(pendingDocumentsProvider);
       ref.invalidate(repositoryDocumentsProvider);
       ref.invalidate(clubDocsCountProvider);

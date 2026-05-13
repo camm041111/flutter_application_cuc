@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/cache/app_cache_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
 import 'providers/events_providers.dart';
@@ -35,7 +36,10 @@ class AgendaScreen extends ConsumerWidget {
           ),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: () async => ref.invalidate(eventsProvider),
+              onRefresh: () async {
+                await ref.read(appCacheServiceProvider).invalidatePrefix('events:');
+                ref.invalidate(eventsProvider);
+              },
               child: eventsAsync.when(
                 loading: () => const Center(
                     child: CircularProgressIndicator(color: AppColors.primary)),
@@ -510,6 +514,12 @@ class _CreateEventSheetState extends ConsumerState<_CreateEventSheet> {
     if (!endDateTime.isAfter(startDateTime)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('La hora de fin debe ser posterior.')),
+      );
+      return;
+    }
+    if (!_isEditing && startDateTime.isBefore(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No puedes crear eventos en el pasado.')),
       );
       return;
     }

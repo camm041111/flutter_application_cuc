@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/cache/app_cache_service.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../club/screens/club_profile_screen.dart';
@@ -160,6 +161,9 @@ class _ProfileHeaderState extends ConsumerState<ProfileHeader> {
           .from('perfiles')
           .update({'url_avatar': publicUrl}).eq('id', widget.profile.id);
 
+      await ref
+          .read(appCacheServiceProvider)
+          .invalidate('profile:${widget.profile.id}');
       ref.invalidate(profileProvider(widget.profile.id));
       messenger.showSnackBar(
         const SnackBar(content: Text('Imagen de perfil actualizada.')),

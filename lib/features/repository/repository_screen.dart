@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/cache/app_cache_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
 import 'providers/repository_providers.dart';
@@ -61,7 +62,12 @@ class _RepositoryScreenState extends ConsumerState<RepositoryScreen> {
       body: Stack(
         children: [
           RefreshIndicator(
-            onRefresh: () async => ref.invalidate(repositoryDocumentsProvider),
+            onRefresh: () async {
+              await ref
+                  .read(appCacheServiceProvider)
+                  .invalidatePrefix('repository:documents:');
+              ref.invalidate(repositoryDocumentsProvider);
+            },
             child: ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               children: [

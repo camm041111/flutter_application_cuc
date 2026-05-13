@@ -1,108 +1,106 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/cache/app_cache_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
+import '../social/social_providers.dart';
 
-class ExploreScreen extends StatelessWidget {
+class ExploreScreen extends ConsumerWidget {
   const ExploreScreen({super.key});
 
+  void _openNewsSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _NewsComposerSheet(),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final newsAsync = ref.watch(newsProvider);
+    final canPublishAsync = ref.watch(canPublishNewsProvider);
+
     return Scaffold(
       appBar: const CucAppBar(),
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: _SearchAndFilters()),
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                sliver: SliverList.separated(
-                  itemCount: 3,
-                  separatorBuilder: (context, index) => const SizedBox(height: 16),
-                  itemBuilder: (_, i) => _ResearchPostCard(index: i),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref.read(appCacheServiceProvider).invalidatePrefix('social:news');
+          ref.invalidate(newsProvider);
+        },
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _NewsSearchBar()),
+            newsAsync.when(
+              loading: () => const SliverFillRemaining(
+                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              ),
+              error: (error, _) => SliverFillRemaining(
+                child: _ExploreEmptyState(
+                  icon: Icons.feed_outlined,
+                  title: 'No se pudieron cargar las noticias',
+                  subtitle: '$error',
                 ),
               ),
-            ],
-          ),
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: _Fab(
-              onTap: () => context.push('/new-post'),
+              data: (posts) {
+                if (posts.isEmpty) {
+                  return const SliverFillRemaining(
+                    child: _ExploreEmptyState(
+                      icon: Icons.campaign_outlined,
+                      title: 'Sin noticias publicadas',
+                      subtitle: 'Cuando lideres o coordinadores publiquen anuncios apareceran aqui.',
+                    ),
+                  );
+                }
+                return SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                  sliver: SliverList.separated(
+                    itemCount: posts.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, index) => _NewsCard(post: posts[index]),
+                  ),
+                );
+              },
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Sub-widgets ─────────────────────────────────────────────────────────────
-
-class _SearchAndFilters extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        children: [
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Investiguemos un poco...',
-              prefixIcon: Icon(Icons.search),
-            ),
-          ),
-          SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _FilterChip(label: 'Recientes', active: true),
-                SizedBox(width: 8),
-                _FilterChip(label: 'Clubes'),
-                SizedBox(width: 8),
-                _FilterChip(label: 'Fecha'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, this.active = false});
-  final String label;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: active ? AppColors.primary : AppColors.surface,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: active ? AppColors.primary : AppColors.border,
+          ],
         ),
       ),
-      child: Row(
+      floatingActionButton: canPublishAsync.maybeWhen(
+        data: (canPublish) => canPublish
+            ? FloatingActionButton(
+                onPressed: () => _openNewsSheet(context),
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.background,
+                child: const Icon(Icons.campaign_outlined),
+              )
+            : null,
+        orElse: () => null,
+      ),
+    );
+  }
+}
+
+class _NewsSearchBar extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: active ? AppColors.background : AppColors.onSurface,
+          TextField(
+            decoration: const InputDecoration(
+              hintText: 'Buscar noticias, clubes o comunicados...',
+              prefixIcon: Icon(Icons.search),
             ),
+            onChanged: (value) => ref.read(newsSearchProvider.notifier).setSearch(value),
           ),
-          const SizedBox(width: 4),
-          Icon(
-            Icons.expand_more,
-            size: 16,
-            color: active ? AppColors.background : AppColors.muted,
+          const SizedBox(height: 12),
+          const Text(
+            'Noticias de clubes',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
         ],
       ),
@@ -110,129 +108,218 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-// Modelo de datos de ejemplo
-final _posts = [
-  (club: 'Club de Ecología', author: 'Dr. Roberto Gómez', time: 'Hace 2h', icon: Icons.eco,
-    title: 'Análisis de Sostenibilidad Urbana', body: 'Nuestros últimos hallazgos sugieren que la implementación de techos verdes en el campus principal reduciría la huella térmica en un 15%.', likes: 128, comments: 24),
-  (club: 'Quantum Computing Lab', author: 'Dra. Ana López', time: 'Hace 5h', icon: Icons.hub,
-    title: 'Extensión de Coherencia en Qubits', body: 'Proponemos un nuevo esquema de corrección de errores que duplicaría los tiempos de coherencia. Buscamos revisión de pares.', likes: 89, comments: 12),
-  (club: 'Club de Biología Molecular', author: 'Dr. Alan Smith', time: 'Hace 1d', icon: Icons.biotech,
-    title: 'Eficiencia de CRISPR-Cas9 en Células T', body: '¿Alguien ha experimentado efectos fuera de objetivo usando la nueva variante de Cas9 en células T primarias humanas?', likes: 156, comments: 42),
-];
+class _NewsCard extends StatelessWidget {
+  const _NewsCard({required this.post});
 
-class _ResearchPostCard extends StatelessWidget {
-  const _ResearchPostCard({required this.index});
-  final int index;
+  final NewsPost post;
 
   @override
   Widget build(BuildContext context) {
-    final p = _posts[index];
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header del post
+          if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              child: Image.network(
+                post.imageUrl!,
+                height: 168,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(p.icon, color: AppColors.primary, size: 20),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(p.club, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                      Text(
-                        '${p.author} • ${p.time}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.muted),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.more_horiz, color: AppColors.muted),
-              ],
-            ),
-          ),
-          // Contenido
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.campaign_outlined, color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(post.clubName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          Text(
+                            '${post.authorName} • ${_relativeTime(post.createdAt)}',
+                            style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
                 Text(
-                  p.title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
+                  post.title,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  p.body,
+                  post.content,
                   style: const TextStyle(fontSize: 13, color: AppColors.onSurface, height: 1.5),
                 ),
               ],
             ),
           ),
-          // Imagen de placeholder (solo primer post)
-          if (index == 0)
-            Container(
-              margin: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-              height: 180,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Icon(Icons.image_outlined, color: AppColors.muted, size: 40),
-              ),
-            ),
-          // Acciones
-          Divider(color: AppColors.primary.withValues(alpha: 0.05), height: 1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            child: Row(
-              children: [
-                _ActionButton(icon: Icons.favorite_outline, label: '${p.likes}', active: index == 2),
-                const SizedBox(width: 20),
-                _ActionButton(icon: Icons.chat_bubble_outline, label: '${p.comments}'),
-              ],
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({required this.icon, required this.label, this.active = false});
-  final IconData icon;
-  final String label;
-  final bool active;
+class _NewsComposerSheet extends ConsumerStatefulWidget {
+  const _NewsComposerSheet();
+
+  @override
+  ConsumerState<_NewsComposerSheet> createState() => _NewsComposerSheetState();
+}
+
+class _NewsComposerSheetState extends ConsumerState<_NewsComposerSheet> {
+  final _titleCtrl = TextEditingController();
+  final _contentCtrl = TextEditingController();
+  final _imageCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _contentCtrl.dispose();
+    _imageCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(socialActionsProvider).createNews(
+            NewsInput(
+              title: _titleCtrl.text,
+              content: _contentCtrl.text,
+              imageUrl: _imageCtrl.text.trim().isEmpty ? null : _imageCtrl.text,
+            ),
+          );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Noticia publicada.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo publicar: $error')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Publicar noticia', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _titleCtrl,
+                  decoration: const InputDecoration(hintText: 'Titulo'),
+                  validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa un titulo' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _contentCtrl,
+                  minLines: 4,
+                  maxLines: 8,
+                  decoration: const InputDecoration(hintText: 'Contenido del comunicado'),
+                  validator: (value) => value == null || value.trim().isEmpty ? 'Ingresa el contenido' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _imageCtrl,
+                  decoration: const InputDecoration(
+                    hintText: 'URL de imagen opcional',
+                    prefixIcon: Icon(Icons.image_outlined),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _saving ? null : _submit,
+                    icon: _saving
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.send_outlined),
+                    label: const Text('PUBLICAR'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExploreEmptyState extends StatelessWidget {
+  const _ExploreEmptyState({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        Icon(icon, size: 20, color: active ? AppColors.primary : AppColors.muted),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: active ? AppColors.primary : AppColors.muted,
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: AppColors.muted, size: 36),
+              const SizedBox(height: 10),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w700), textAlign: TextAlign.center),
+              const SizedBox(height: 4),
+              Text(subtitle, style: const TextStyle(color: AppColors.muted, fontSize: 12), textAlign: TextAlign.center),
+            ],
           ),
         ),
       ],
@@ -240,29 +327,11 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _Fab extends StatelessWidget {
-  const _Fab({required this.onTap});
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.4),
-              blurRadius: 20,
-            ),
-          ],
-        ),
-        child: const Icon(Icons.add, color: AppColors.background, size: 28),
-      ),
-    );
-  }
+String _relativeTime(DateTime date) {
+  final diff = DateTime.now().difference(date);
+  if (diff.inMinutes < 1) return 'Ahora';
+  if (diff.inHours < 1) return 'Hace ${diff.inMinutes}m';
+  if (diff.inDays < 1) return 'Hace ${diff.inHours}h';
+  if (diff.inDays < 7) return 'Hace ${diff.inDays}d';
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }

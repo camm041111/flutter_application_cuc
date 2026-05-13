@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/cache/app_cache_service.dart';
 import '../../core/providers/auth_providers.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
@@ -31,6 +32,7 @@ class ProfileScreen extends ConsumerWidget {
         error: (e, s) => Center(child: Text('Error: $e')),
         data: (profile) => RefreshIndicator(
           onRefresh: () async {
+            await ref.read(appCacheServiceProvider).invalidate('profile:$userId');
             ref.invalidate(profileProvider(userId));
             ref.invalidate(statsProvider(userId));
           },

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/cache/app_cache_service.dart';
 import '../../../core/providers/supabase_provider.dart';
 
 // 1. Actualizamos el Modelo
@@ -44,20 +45,49 @@ class UserProfile {
       clubNombre: clubData?['nombre'],
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'nombre_completo': nombreCompleto,
+      'matricula': matricula,
+      'url_avatar': urlAvatar,
+      'rol': rol,
+      'estado': estado,
+      'divisiones_academicas': {'acronimo': divisionAcronimo},
+      'clubes': clubId == null && clubNombre == null
+          ? null
+          : {
+              'id': clubId,
+              'nombre': clubNombre,
+            },
+    };
+  }
 }
 
 // 2. Actualizamos el Provider
 final profileProvider = FutureProvider.family<UserProfile, String>((ref, userId) async {
+  final cache = ref.read(appCacheServiceProvider);
   final supabase = ref.read(supabaseClientProvider);
 
-  // 🚀 El JOIN Maestro: Traemos la división origen Y los datos del club asignado
-  final response = await supabase
-      .from('perfiles')
-      .select('*, divisiones_academicas(acronimo), clubes(id, nombre)')
-      .eq('id', userId)
-      .single();
+  return cache.staleWhileRevalidate<UserProfile>(
+    ref: ref,
+    key: 'profile:$userId',
+    ttl: CacheTtl.profile,
+    fetch: () async {
+      // 🚀 El JOIN Maestro: Traemos la división origen Y los datos del club asignado
+      final response = await supabase
+          .from('perfiles')
+          .select('*, divisiones_academicas(acronimo), clubes(id, nombre)')
+          .eq('id', userId)
+          .single();
 
-  return UserProfile.fromJson(response);
+      return UserProfile.fromJson(response);
+    },
+    fromJson: (json) => UserProfile.fromJson(Map<String, dynamic>.from(json as Map)),
+    toJson: (profile) => profile.toJson(),
+    persistent: false,
+  );
 });
 
 // 3. Provider del Heatmap (Consume el RPC)
