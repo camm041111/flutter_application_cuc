@@ -59,89 +59,80 @@ class _RepositoryScreenState extends ConsumerState<RepositoryScreen> {
 
     return Scaffold(
       appBar: const CucAppBar(),
-      body: Stack(
-        children: [
-          RefreshIndicator(
-            onRefresh: () async {
-              await ref
-                  .read(appCacheServiceProvider)
-                  .invalidatePrefix('repository:documents:');
-              ref.invalidate(repositoryDocumentsProvider);
-            },
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-              children: [
-                TextField(
-                  controller: _searchCtrl,
-                  onChanged: _applySearch,
-                  decoration: const InputDecoration(
-                    hintText: 'Buscar investigaciones...',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                _FilterLauncher(
-                  activeFilters: filters.activeCount,
-                  onTap: _openFilterSheet,
-                ),
-                const SizedBox(height: 10),
-                _SortBar(
-                  value: filters.sort,
-                  onChanged: (sort) {
-                    ref.read(repositoryFiltersProvider.notifier).setFilters(
-                          filters.copyWith(sort: sort),
-                        );
-                  },
-                ),
-                const SizedBox(height: 16),
-                docsAsync.when(
-                  loading: () => const SizedBox(
-                    height: 220,
-                    child: Center(
-                        child: CircularProgressIndicator(
-                            color: AppColors.primary)),
-                  ),
-                  error: (e, s) => _EmptyState(
-                    icon: Icons.cloud_off_outlined,
-                    title: 'No se pudo cargar el repositorio',
-                    subtitle: '$e',
-                  ),
-                  data: (items) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ResultsHeader(count: items.length),
-                      const SizedBox(height: 12),
-                      if (items.isEmpty)
-                        const _EmptyState(
-                          icon: Icons.folder_off_outlined,
-                          title: 'Sin documentos',
-                          subtitle:
-                              'Ajusta los filtros o sube una nueva publicación.',
-                        )
-                      else
-                        ...items.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: _RepoCard(item: item),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await ref
+              .read(appCacheServiceProvider)
+              .invalidatePrefix('repository:documents:');
+          ref.invalidate(repositoryDocumentsProvider);
+        },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          children: [
+            TextField(
+              controller: _searchCtrl,
+              onChanged: _applySearch,
+              decoration: const InputDecoration(
+                hintText: 'Buscar investigaciones...',
+                prefixIcon: Icon(Icons.search),
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: _openUploadSheet,
-              backgroundColor: AppColors.primary,
-              foregroundColor: AppColors.background,
-              child: const Icon(Icons.upload_file),
+            const SizedBox(height: 10),
+            _FilterLauncher(
+              activeFilters: filters.activeCount,
+              onTap: _openFilterSheet,
             ),
-          ),
-        ],
+            const SizedBox(height: 10),
+            _SortBar(
+              value: filters.sort,
+              onChanged: (sort) {
+                ref.read(repositoryFiltersProvider.notifier).setFilters(
+                      filters.copyWith(sort: sort),
+                    );
+              },
+            ),
+            const SizedBox(height: 16),
+            docsAsync.when(
+              loading: () => const SizedBox(
+                height: 220,
+                child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary)),
+              ),
+              error: (e, s) => _EmptyState(
+                icon: Icons.cloud_off_outlined,
+                title: 'No se pudo cargar el repositorio',
+                subtitle: '$e',
+              ),
+              data: (items) => Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ResultsHeader(count: items.length),
+                  const SizedBox(height: 12),
+                  if (items.isEmpty)
+                    const _EmptyState(
+                      icon: Icons.folder_off_outlined,
+                      title: 'Sin documentos',
+                      subtitle:
+                          'Ajusta los filtros o sube una nueva publicación.',
+                    )
+                  else
+                    ...items.map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _RepoCard(item: item),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openUploadSheet,
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.background,
+        child: const Icon(Icons.upload_file),
       ),
     );
   }
@@ -288,7 +279,8 @@ class _RepoCardState extends ConsumerState<_RepoCard> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Borrar documento'),
-        content: Text('¿Quieres borrar "${widget.item.title}" del repositorio?'),
+        content:
+            Text('¿Quieres borrar "${widget.item.title}" del repositorio?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -382,9 +374,8 @@ class _RepoCardState extends ConsumerState<_RepoCard> {
                     Wrap(
                       spacing: 4,
                       runSpacing: 4,
-                      children: item.tags
-                          .map((tag) => _TagChip(label: tag))
-                          .toList(),
+                      children:
+                          item.tags.map((tag) => _TagChip(label: tag)).toList(),
                     ),
                   ],
                 ],
@@ -422,8 +413,7 @@ class _RepoCardState extends ConsumerState<_RepoCard> {
                           : const Icon(Icons.delete_outline, size: 20),
                       color: AppColors.error,
                       style: IconButton.styleFrom(
-                        backgroundColor:
-                            AppColors.error.withValues(alpha: 0.1),
+                        backgroundColor: AppColors.error.withValues(alpha: 0.1),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),

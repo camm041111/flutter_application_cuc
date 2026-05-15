@@ -29,7 +29,8 @@ class CucAppBar extends ConsumerWidget implements PreferredSizeWidget {
               color: const Color(0xFF122114),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.science, color: AppColors.primary, size: 20),
+            child:
+                const Icon(Icons.science, color: AppColors.primary, size: 20),
           ),
           const SizedBox(width: 10),
           const Column(
@@ -58,7 +59,16 @@ class CucAppBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          onPressed: () => _openNotifications(context),
+          onPressed: () async {
+            try {
+              await ref.read(notificationServiceProvider).markAllAsRead();
+            } catch (_) {
+              // La bandeja debe abrir incluso si la actualizacion remota falla.
+            }
+            if (context.mounted) {
+              _openNotifications(context);
+            }
+          },
           icon: Badge(
             isLabelVisible: unreadCount > 0,
             label: Text(unreadCount > 9 ? '9+' : '$unreadCount'),
@@ -111,11 +121,14 @@ class _NotificationsSheet extends ConsumerWidget {
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: notificationsAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+            loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.primary)),
             error: (error, _) => ListView(
               controller: scrollController,
               padding: const EdgeInsets.all(16),
-              children: [Text('No se pudieron cargar las notificaciones: $error')],
+              children: [
+                Text('No se pudieron cargar las notificaciones: $error')
+              ],
             ),
             data: (items) => ListView(
               controller: scrollController,
@@ -124,9 +137,13 @@ class _NotificationsSheet extends ConsumerWidget {
                 Row(
                   children: [
                     const Expanded(
-                      child: Text('Notificaciones', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                      child: Text('Notificaciones',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w800)),
                     ),
-                    IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                    IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -138,7 +155,8 @@ class _NotificationsSheet extends ConsumerWidget {
                       border: Border.all(color: AppColors.border),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Text('Aun no tienes notificaciones.', textAlign: TextAlign.center),
+                    child: const Text('Aun no tienes notificaciones.',
+                        textAlign: TextAlign.center),
                   )
                 else
                   ...items.map((item) => _NotificationTile(item: item)),
@@ -161,10 +179,13 @@ class _NotificationTile extends ConsumerWidget {
     return Card(
       child: ListTile(
         leading: Icon(
-          item.type == 'agenda' ? Icons.event_available_outlined : Icons.notifications_outlined,
+          item.type == 'agenda'
+              ? Icons.event_available_outlined
+              : Icons.notifications_outlined,
           color: item.read ? AppColors.muted : AppColors.primary,
         ),
-        title: Text(item.title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        title: Text(item.title,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(item.body, maxLines: 2, overflow: TextOverflow.ellipsis),
         trailing: IconButton(
           icon: const Icon(Icons.done, size: 18),

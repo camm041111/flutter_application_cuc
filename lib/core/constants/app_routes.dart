@@ -21,15 +21,25 @@ final routerProvider = Provider<GoRouter>((ref) {
   final supabase = ref.watch(supabaseClientProvider);
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
 
     // CRÍTICO: Escucha cambios en Supabase para re-evaluar las rutas automáticamente
     refreshListenable: GoRouterRefreshStream(supabase.auth.onAuthStateChange),
 
     redirect: (context, state) {
+      final isSplash = state.uri.toString() == '/splash';
+      if (authState.isLoading) {
+        return isSplash ? null : '/splash';
+      }
+
       final isAuth = authState.value?.session != null;
       final isGoingToLogin = state.uri.toString() == '/login';
       final isGoingToRegister = state.uri.toString() == '/register';
+
+      if (isSplash) {
+        if (!isAuth) return '/login';
+        return _evaluateProfileRedirect(perfilAsync) ?? '/';
+      }
 
       // 1. Protección de Rutas Privadas: Si no hay sesión, al Login.
       if (!isAuth && !isGoingToLogin && !isGoingToRegister) {
@@ -55,6 +65,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
     routes: [
       GoRoute(
+        path: '/splash',
+        builder: (context, state) => const _AuthLoadingScreen(),
+      ),
+      GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
       ),
@@ -79,8 +93,22 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
+class _AuthLoadingScreen extends StatelessWidget {
+  const _AuthLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+}
+
 /// Evalúa el 'estado' del perfil para cumplir con el control de acceso[cite: 3].
-String? _evaluateProfileRedirect(AsyncValue<Map<String, dynamic>?> perfilAsync) {
+String? _evaluateProfileRedirect(
+    AsyncValue<Map<String, dynamic>?> perfilAsync) {
   return perfilAsync.when(
     data: (perfil) {
       if (perfil == null) return null;
@@ -99,7 +127,8 @@ String? _evaluateProfileRedirect(AsyncValue<Map<String, dynamic>?> perfilAsync) 
       return null;
     },
     loading: () => null, // Mantiene la vista actual mientras carga la metadata
-    error: (_, __) => '/login', // Ante fallo crítico de BD, por seguridad se desloguea
+    error: (_, __) =>
+        '/login', // Ante fallo crítico de BD, por seguridad se desloguea
   );
 }
 

@@ -26,7 +26,8 @@ class SocialProfile {
   final String divisionAcronym;
 
   bool get isActive => status == 'activo';
-  bool get canPublishOfficial => isActive && (role == 'lider' || role == 'coordinador');
+  bool get canPublishOfficial =>
+      isActive && (role == 'lider' || role == 'coordinador');
 }
 
 SocialProfile _profileFromJson(Map<String, dynamic> json) {
@@ -43,14 +44,16 @@ SocialProfile _profileFromJson(Map<String, dynamic> json) {
   );
 }
 
-final currentSocialProfileProvider = FutureProvider.autoDispose<SocialProfile?>((ref) async {
+final currentSocialProfileProvider =
+    FutureProvider.autoDispose<SocialProfile?>((ref) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
   if (user == null) return null;
 
   final response = await supabase
       .from('perfiles')
-      .select('id, nombre_completo, rol, estado, id_club, clubes(nombre), divisiones_academicas(acronimo)')
+      .select(
+          'id, nombre_completo, rol, estado, id_club, clubes(nombre), divisiones_academicas(acronimo)')
       .eq('id', user.id)
       .maybeSingle();
   if (response == null) return null;
@@ -90,7 +93,8 @@ class NewsPost {
       title: (json['titulo'] ?? 'Noticia sin titulo').toString(),
       content: (json['contenido'] ?? '').toString(),
       imageUrl: json['url_imagen']?.toString(),
-      createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ?? DateTime.now(),
+      createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ??
+          DateTime.now(),
       authorName: (author?['nombre_completo'] ?? 'CUC').toString(),
       clubName: (club?['nombre'] ?? 'Club CUC').toString(),
     );
@@ -109,7 +113,8 @@ class NewsPost {
       };
 }
 
-final newsSearchProvider = NotifierProvider<NewsSearchNotifier, String>(NewsSearchNotifier.new);
+final newsSearchProvider =
+    NotifierProvider<NewsSearchNotifier, String>(NewsSearchNotifier.new);
 
 class NewsSearchNotifier extends Notifier<String> {
   @override
@@ -130,10 +135,12 @@ final newsProvider = FutureProvider.autoDispose<List<NewsPost>>((ref) async {
     fetch: () async {
       final response = await supabase
           .from('noticias')
-          .select('id, id_club, id_autor, titulo, contenido, url_imagen, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
+          .select(
+              'id, id_club, id_autor, titulo, contenido, url_imagen, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
           .order('fecha_creacion', ascending: false);
       return (response as List<dynamic>)
-          .map((row) => NewsPost.fromJson(Map<String, dynamic>.from(row as Map)))
+          .map(
+              (row) => NewsPost.fromJson(Map<String, dynamic>.from(row as Map)))
           .where((post) {
         if (search.isEmpty) return true;
         return post.title.toLowerCase().contains(search) ||
@@ -166,6 +173,7 @@ class ForumThread {
     required this.createdAt,
     required this.authorName,
     required this.authorMeta,
+    required this.authorAvatarUrl,
     required this.replyCount,
   });
 
@@ -180,6 +188,7 @@ class ForumThread {
   final DateTime createdAt;
   final String authorName;
   final String authorMeta;
+  final String authorAvatarUrl;
   final int replyCount;
 
   int get score => upVotes - downVotes;
@@ -198,9 +207,12 @@ class ForumThread {
       tags: _stringList(json['etiquetas']).take(3).toList(),
       upVotes: int.tryParse((json['votos_positivos'] ?? 0).toString()) ?? 0,
       downVotes: int.tryParse((json['votos_negativos'] ?? 0).toString()) ?? 0,
-      createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ?? DateTime.now(),
+      createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ??
+          DateTime.now(),
       authorName: (profile?['nombre_completo'] ?? 'Usuario CUC').toString(),
-      authorMeta: '${club?['nombre'] ?? 'Club CUC'} • ${division?['acronimo'] ?? 'CUC'}',
+      authorMeta:
+          '${club?['nombre'] ?? 'Club CUC'} • ${division?['acronimo'] ?? 'CUC'}',
+      authorAvatarUrl: (profile?['url_avatar'] ?? '').toString(),
       replyCount: replies is List ? replies.length : 0,
     );
   }
@@ -218,6 +230,7 @@ class ForumReply {
     required this.createdAt,
     required this.authorName,
     required this.authorMeta,
+    required this.authorAvatarUrl,
     this.parentReplyId,
   });
 
@@ -231,6 +244,7 @@ class ForumReply {
   final DateTime createdAt;
   final String authorName;
   final String authorMeta;
+  final String authorAvatarUrl;
   final String? parentReplyId;
 
   int get score => upVotes - downVotes;
@@ -248,9 +262,12 @@ class ForumReply {
       upVotes: int.tryParse((json['votos_positivos'] ?? 0).toString()) ?? 0,
       downVotes: int.tryParse((json['votos_negativos'] ?? 0).toString()) ?? 0,
       isCorrect: json['es_correcta'] == true,
-      createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ?? DateTime.now(),
+      createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ??
+          DateTime.now(),
       authorName: (profile?['nombre_completo'] ?? 'Usuario CUC').toString(),
-      authorMeta: '${club?['nombre'] ?? 'Club CUC'} • ${division?['acronimo'] ?? 'CUC'}',
+      authorMeta:
+          '${club?['nombre'] ?? 'Club CUC'} • ${division?['acronimo'] ?? 'CUC'}',
+      authorAvatarUrl: (profile?['url_avatar'] ?? '').toString(),
       parentReplyId: parent?.toString(),
     );
   }
@@ -276,7 +293,8 @@ class ForumFilters {
   final String area;
   final ForumSort sort;
 
-  String get cacheKey => '${Uri.encodeComponent(search.trim().toLowerCase())}|$area|${sort.name}';
+  String get cacheKey =>
+      '${Uri.encodeComponent(search.trim().toLowerCase())}|$area|${sort.name}';
 
   ForumFilters copyWith({String? search, String? area, ForumSort? sort}) {
     return ForumFilters(
@@ -288,7 +306,8 @@ class ForumFilters {
 }
 
 final forumFiltersProvider =
-    NotifierProvider<ForumFiltersNotifier, ForumFilters>(ForumFiltersNotifier.new);
+    NotifierProvider<ForumFiltersNotifier, ForumFilters>(
+        ForumFiltersNotifier.new);
 
 class ForumFiltersNotifier extends Notifier<ForumFilters> {
   @override
@@ -299,7 +318,8 @@ class ForumFiltersNotifier extends Notifier<ForumFilters> {
   void setSort(ForumSort value) => state = state.copyWith(sort: value);
 }
 
-final forumThreadsProvider = FutureProvider.autoDispose<List<ForumThread>>((ref) async {
+final forumThreadsProvider =
+    FutureProvider.autoDispose<List<ForumThread>>((ref) async {
   final filters = ref.watch(forumFiltersProvider);
   final cache = ref.read(appCacheServiceProvider);
   final supabase = ref.read(supabaseClientProvider);
@@ -309,9 +329,8 @@ final forumThreadsProvider = FutureProvider.autoDispose<List<ForumThread>>((ref)
     key: 'social:forum:${filters.cacheKey}',
     ttl: CacheTtl.repository,
     fetch: () async {
-      dynamic query = supabase
-          .from('preguntas_foro')
-          .select('id, id_autor, titulo, contenido, area_conocimiento, etiquetas, votos_positivos, votos_negativos, fecha_creacion, perfiles(nombre_completo, clubes(nombre), divisiones_academicas(acronimo)), respuestas_foro(id)');
+      dynamic query = supabase.from('preguntas_foro').select(
+          'id, id_autor, titulo, contenido, area_conocimiento, etiquetas, votos_positivos, votos_negativos, fecha_creacion, perfiles(nombre_completo, url_avatar, clubes(nombre), divisiones_academicas(acronimo)), respuestas_foro(id)');
       if (filters.area.isNotEmpty) {
         query = query.eq('area_conocimiento', filters.area);
       }
@@ -329,7 +348,8 @@ final forumThreadsProvider = FutureProvider.autoDispose<List<ForumThread>>((ref)
 
       final response = await query;
       return (response as List<dynamic>)
-          .map((row) => ForumThread.fromJson(Map<String, dynamic>.from(row as Map)))
+          .map((row) =>
+              ForumThread.fromJson(Map<String, dynamic>.from(row as Map)))
           .where((thread) {
         final search = filters.search.trim().toLowerCase();
         if (search.isEmpty) return true;
@@ -339,7 +359,8 @@ final forumThreadsProvider = FutureProvider.autoDispose<List<ForumThread>>((ref)
       }).toList();
     },
     fromJson: (json) => (json as List<dynamic>)
-        .map((row) => ForumThread.fromJson(Map<String, dynamic>.from(row as Map)))
+        .map((row) =>
+            ForumThread.fromJson(Map<String, dynamic>.from(row as Map)))
         .toList(),
     toJson: (threads) => threads
         .map((thread) => {
@@ -352,19 +373,24 @@ final forumThreadsProvider = FutureProvider.autoDispose<List<ForumThread>>((ref)
               'votos_positivos': thread.upVotes,
               'votos_negativos': thread.downVotes,
               'fecha_creacion': thread.createdAt.toIso8601String(),
-              'perfiles': {'nombre_completo': thread.authorName},
-              'respuestas_foro': List.generate(thread.replyCount, (index) => {'id': index}),
+              'perfiles': {
+                'nombre_completo': thread.authorName,
+                'url_avatar': thread.authorAvatarUrl,
+              },
+              'respuestas_foro':
+                  List.generate(thread.replyCount, (index) => {'id': index}),
             })
         .toList(),
   );
 });
 
-final forumRepliesProvider =
-    FutureProvider.autoDispose.family<List<ForumReply>, String>((ref, threadId) async {
+final forumRepliesProvider = FutureProvider.autoDispose
+    .family<List<ForumReply>, String>((ref, threadId) async {
   final supabase = ref.read(supabaseClientProvider);
   final response = await supabase
       .from('respuestas_foro')
-      .select('id, id_pregunta, id_autor, contenido, votos_positivos, votos_negativos, es_correcta, fecha_creacion, id_respuesta_padre, perfiles(nombre_completo, clubes(nombre), divisiones_academicas(acronimo))')
+      .select(
+          'id, id_pregunta, id_autor, contenido, votos_positivos, votos_negativos, es_correcta, fecha_creacion, id_respuesta_padre, perfiles(nombre_completo, url_avatar, clubes(nombre), divisiones_academicas(acronimo))')
       .eq('id_pregunta', threadId)
       .order('fecha_creacion', ascending: true);
   return (response as List<dynamic>)
@@ -393,7 +419,8 @@ class ForumThreadInput {
   final List<String> tags;
 }
 
-final socialActionsProvider = Provider<SocialActions>((ref) => SocialActions(ref));
+final socialActionsProvider =
+    Provider<SocialActions>((ref) => SocialActions(ref));
 
 class SocialActions {
   SocialActions(this.ref);
@@ -402,7 +429,8 @@ class SocialActions {
   Future<void> createNews(NewsInput input) async {
     final profile = await _requireActiveProfile();
     if (!profile.canPublishOfficial || profile.clubId.isEmpty) {
-      throw Exception('Solo lideres y coordinadores activos pueden publicar noticias.');
+      throw Exception(
+          'Solo lideres y coordinadores activos pueden publicar noticias.');
     }
     final supabase = ref.read(supabaseClientProvider);
     await supabase.from('noticias').insert({
@@ -410,7 +438,9 @@ class SocialActions {
       'id_autor': profile.id,
       'titulo': input.title.trim(),
       'contenido': input.content.trim(),
-      'url_imagen': input.imageUrl?.trim().isEmpty == true ? null : input.imageUrl?.trim(),
+      'url_imagen': input.imageUrl?.trim().isEmpty == true
+          ? null
+          : input.imageUrl?.trim(),
     });
     await ref.read(appCacheServiceProvider).invalidatePrefix('social:news');
     ref.invalidate(newsProvider);
@@ -453,10 +483,10 @@ class SocialActions {
   Future<void> voteReply(ForumReply reply, {required bool up}) async {
     await _requireActiveProfile();
     final supabase = ref.read(supabaseClientProvider);
-    await supabase.from('respuestas_foro').update({
-      (up ? 'votos_positivos' : 'votos_negativos'):
-          up ? reply.upVotes + 1 : reply.downVotes + 1,
-    }).eq('id', reply.id);
+    await supabase.rpc('votar_respuesta_foro', params: {
+      'p_id_respuesta': reply.id,
+      'p_valor': up ? 1 : -1,
+    });
     ref.invalidate(forumRepliesProvider(reply.threadId));
   }
 
