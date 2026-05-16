@@ -44,7 +44,7 @@ class EventsList extends StatelessWidget {
           const SizedBox(height: 24),
         ],
         Text(
-          showFuture && listEvents.isNotEmpty ? 'Siguientes Eventos...' : (!showFuture ? 'Eventos Pasados' : ''),
+          showFuture && listEvents.isNotEmpty ? 'Siguientes Eventos' : (!showFuture ? 'Eventos Pasados' : ''),
           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
         if (listEvents.isNotEmpty) const SizedBox(height: 12),
