@@ -89,29 +89,4 @@ class NotificationService {
     await supabase.from('notificaciones').delete().eq('id', notificationId);
     ref.invalidate(notificationsProvider);
   }
-
-  Future<void> setNotificationsEnabled(bool enabled) async {
-    final supabase = ref.read(supabaseClientProvider);
-    final user = supabase.auth.currentUser;
-    if (user == null) return;
-
-    await supabase
-        .from('preferencias_notificacion')
-        .upsert({'id_usuario': user.id, 'push_habilitado': enabled});
-  }
-
-  Future<void> registerPushToken(String token,
-      {String platform = 'unknown'}) async {
-    final supabase = ref.read(supabaseClientProvider);
-    final user = supabase.auth.currentUser;
-    if (user == null || token.trim().isEmpty) return;
-
-    await supabase.from('tokens_push').upsert({
-      'id_usuario': user.id,
-      'token': token.trim(),
-      'plataforma': platform,
-      'activo': true,
-      'actualizado_el': DateTime.now().toIso8601String(),
-    }, onConflict: 'token');
-  }
 }
