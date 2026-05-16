@@ -10,7 +10,7 @@ import '../providers/auth_providers.dart';
 // Importaciones de Feature-Modules
 import '../../features/auth/login/login_screen.dart';
 import '../../features/auth/register/register_screen.dart';
-import '../../features/main_shell.dart';
+import '../../features/main_navigation_bar.dart';
 import '../../features/profile/pending_profile_screen.dart';
 
 /// Proveedor global de navegación.

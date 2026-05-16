@@ -14,6 +14,7 @@ class AppColors {
   static const onSurface = Color(0xFFE6E6E6);
   static const muted = Color(0xFF8B9A8F);
   static const error = Color(0xFFB71C1C);
+  static const fondo = Color(0xff212f17);
 }
 
 class AppTheme {

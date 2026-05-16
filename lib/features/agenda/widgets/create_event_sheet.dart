@@ -3,6 +3,7 @@ import 'package:flutter/services.dart'; // Importante para el HapticFeedback
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/correct_snackbar.dart';
 import '../providers/events_providers.dart';
 
 class CreateEventSheet extends ConsumerStatefulWidget {
@@ -153,14 +154,23 @@ class _CreateEventSheetState extends ConsumerState<CreateEventSheet> {
       );
       final actions = ref.read(eventActionsProvider);
 
-      if (_isEditing) await actions.updateEvent(widget.event!, input);
-      else await actions.createEvent(input);
+      if (_isEditing) {
+        await actions.updateEvent(widget.event!, input);
+      } else {
+        await actions.createEvent(input);
+      }
 
       if (!mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_isEditing ? 'Evento guardado.' : 'Evento creado.')),
+      //aqui ta el snackbar
+      CucSnackBar.show(
+        context,
+        icon: Icons.check_circle_outline,
+        iconColor: AppColors.primary,
+        //borderColor: AppColors.fondo,
+        message: _isEditing ? 'Evento guardado correctamente.' : 'Evento creado con éxito.',
       );
+
     } catch (e) {
       final cleanError = e.toString().replaceAll('Exception: ', '');
       setState(() => _inlineError = cleanError);
