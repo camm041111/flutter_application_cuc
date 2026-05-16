@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // Agregado para debugPrint
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/cache/app_cache_service.dart';
@@ -95,8 +96,8 @@ class EventInput {
 }
 
 final showFutureEventsProvider =
-    NotifierProvider<ShowFutureEventsNotifier, bool>(
-        ShowFutureEventsNotifier.new);
+NotifierProvider<ShowFutureEventsNotifier, bool>(
+    ShowFutureEventsNotifier.new);
 
 class ShowFutureEventsNotifier extends Notifier<bool> {
   @override
@@ -169,7 +170,7 @@ final canManageEventsProvider = FutureProvider.autoDispose<bool>((ref) async {
 });
 
 final canManageEventProvider =
-    FutureProvider.autoDispose.family<bool, ClubEvent>((ref, event) async {
+FutureProvider.autoDispose.family<bool, ClubEvent>((ref, event) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
   if (user == null) return false;
@@ -324,13 +325,19 @@ class EventActions {
         'tipo': 'agenda',
         'titulo': 'Nuevo evento del club',
         'cuerpo':
-            '$title • ${startAt.day.toString().padLeft(2, '0')}/${startAt.month.toString().padLeft(2, '0')} ${startAt.hour.toString().padLeft(2, '0')}:${startAt.minute.toString().padLeft(2, '0')}',
+        '$title • ${startAt.day.toString().padLeft(2, '0')}/${startAt.month.toString().padLeft(2, '0')} ${startAt.hour.toString().padLeft(2, '0')}:${startAt.minute.toString().padLeft(2, '0')}',
         'id_referencia': eventId,
       };
     }).toList();
 
+    // TODO: Migrar esta lógica a un Trigger de Supabase para mejor rendimiento (evita cuellos de botella)
     if (rows.isNotEmpty) {
-      await supabase.from('notificaciones').insert(rows);
+      try {
+        await supabase.from('notificaciones').insert(rows);
+      } catch (e) {
+        // Solo registramos el error en consola, pero no evitamos que el evento se cree
+        debugPrint('Error creando notificaciones en lote: $e');
+      }
     }
   }
 
