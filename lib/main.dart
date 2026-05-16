@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-// Importa tu tema oscuro/antracita
 import 'core/theme/app_theme.dart';
-// Importa el provider del router que creamos
 import 'core/constants/app_routes.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,21 +44,29 @@ void main() async {
   runApp(const ProviderScope(child: CucApp()));
 }
 
-// Convertimos a ConsumerWidget para poder leer el routerProvider
 class CucApp extends ConsumerWidget {
   const CucApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Obtenemos la instancia de GoRouter configurada con nuestra lógica de seguridad
     final router = ref.watch(routerProvider);
 
-    // Cambiamos MaterialApp tradicional por MaterialApp.router
     return MaterialApp.router(
-      title: 'Clubes Universitarios de Ciencias',
+      title: 'CUC App',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark, // Tu tema minimalista
-      routerConfig: router, // Inyectamos GoRouter
+      theme: AppTheme.dark,
+
+      //CONFIGURACIÓN DE LOCALIZACIÓN
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('es', 'MX'), // Español de México como idioma principal
+        Locale('en', 'US'), // Inglés como respaldo
+      ],
+      routerConfig: router,
     );
   }
 }
