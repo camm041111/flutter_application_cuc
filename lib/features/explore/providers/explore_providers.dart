@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/providers/supabase_provider.dart';
 
 // ─── MODELOS ─────────────────────────────────────────────────────────────
@@ -42,17 +44,16 @@ class NewsInput {
   const NewsInput({
     required this.title,
     required this.content,
-    this.imageUrl,
+    this.imageFile,
   });
 
   final String title;
   final String content;
-  final String? imageUrl;
+  final XFile? imageFile;
 }
 
-// ─── ESTADOS Y PERMISOS ──────────────────────────────────────────────────
+// ─── ESTADOS Y BUSCADOR (RIVERPOD 3) ──────────────────────────────────────
 
-// En Riverpod 3, abandonamos StateProvider. Usamos Notifier de forma limpia.
 class NewsSearchNotifier extends Notifier<String> {
   @override
   String build() => '';
@@ -64,7 +65,6 @@ class NewsSearchNotifier extends Notifier<String> {
 
 final newsSearchProvider = NotifierProvider<NewsSearchNotifier, String>(NewsSearchNotifier.new);
 
-// FutureProvider nativo (En Riverpod 3 se optimiza la recolección de basura)
 final canPublishNewsProvider = FutureProvider<bool>((ref) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
@@ -83,9 +83,8 @@ final canPublishNewsProvider = FutureProvider<bool>((ref) async {
   return status == 'activo' && clubId != null && (role == 'coordinador' || role == 'lider');
 });
 
-// ─── PAGINACIÓN Y FEED PRINCIPAL ─────────────────────────────────────────
+// ─── NOTIFIER DE PAGINACIÓN (RIVERPOD 3) ──────────────────────────────────
 
-// En Riverpod 3, AutoDisposeAsyncNotifier se fusionó en AsyncNotifier.
 class NewsNotifier extends AsyncNotifier<List<NewsPost>> {
   int _page = 0;
   final int _pageSize = 10;
@@ -105,17 +104,14 @@ class NewsNotifier extends AsyncNotifier<List<NewsPost>> {
     int start = pageIndex * _pageSize;
     int end = start + _pageSize - 1;
 
-    // 1. Consulta base (PostgrestFilterBuilder)
     var query = supabase
         .from('noticias')
         .select('id, titulo, contenido, url_imagen, fecha_creacion, clubes(nombre), perfiles(nombre_completo)');
 
-    // 2. Aplicamos los filtros condicionales
     if (search.trim().isNotEmpty) {
       query = query.ilike('titulo', '%${search.trim()}%');
     }
 
-    // 3. Finalmente aplicamos el ordenamiento y la paginación
     final response = await query
         .order('fecha_creacion', ascending: false)
         .range(start, end);
@@ -133,7 +129,6 @@ class NewsNotifier extends AsyncNotifier<List<NewsPost>> {
     if (state.isLoading || hasReachedMax) return;
 
     final currentList = state.value ?? [];
-
     state = const AsyncLoading();
 
     state = await AsyncValue.guard(() async {
@@ -144,7 +139,6 @@ class NewsNotifier extends AsyncNotifier<List<NewsPost>> {
   }
 }
 
-// Declaración limpia del provider usando el constructor .new (característica de Dart moderno + Riverpod 3)
 final newsProvider = AsyncNotifierProvider<NewsNotifier, List<NewsPost>>(NewsNotifier.new);
 
 // ─── ACCIONES (MUTACIONES) ───────────────────────────────────────────────
@@ -178,12 +172,29 @@ class ExploreActions {
       throw Exception('El título y el contenido son obligatorios.');
     }
 
+    String? imageUrl;
+
+    if (input.imageFile != null) {
+      final bytes = await input.imageFile!.readAsBytes();
+      final fileExt = input.imageFile!.path.split('.').last.toLowerCase();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${user.id}.$fileExt';
+
+      // Sube los bytes directamente respetando las reglas de Supabase Storage
+      await supabase.storage.from('noticias').uploadBinary(
+        fileName,
+        bytes,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+      );
+
+      imageUrl = supabase.storage.from('noticias').getPublicUrl(fileName);
+    }
+
     await supabase.from('noticias').insert({
       'id_club': clubId,
       'id_autor': user.id,
       'titulo': input.title.trim(),
       'contenido': input.content.trim(),
-      'url_imagen': input.imageUrl?.trim(),
+      'url_imagen': imageUrl,
     });
 
     ref.invalidate(newsProvider);
