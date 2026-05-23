@@ -62,7 +62,7 @@ class AuthService {
       return 'Ocurrió un error inesperado: $e';
     }
   }
-  /// Método para iniciar sesión
+
   Future<String?> iniciarSesion({
     required String correo,
     required String contrasena,
