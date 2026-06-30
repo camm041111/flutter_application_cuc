@@ -459,7 +459,6 @@ class RepositoryActions {
       'urls_archivos': [url],
       'id_autor': user.id,
       'id_club': profile['id_club'],
-      'estado': 'pendiente',
     });
 
     await ref.read(appCacheServiceProvider).invalidatePrefix('repository:');
