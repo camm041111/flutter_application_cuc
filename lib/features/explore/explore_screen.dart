@@ -68,12 +68,6 @@ class ExploreScreen extends ConsumerWidget {
                     itemCount: posts.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (_, index) {
-                      // Disparador de paginación automática al llegar al fondo
-                      if (index == posts.length - 1) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          ref.read(newsProvider.notifier).loadMore();
-                        });
-                      }
                       return NewsCard(post: posts[index]);
                     },
                   ),
