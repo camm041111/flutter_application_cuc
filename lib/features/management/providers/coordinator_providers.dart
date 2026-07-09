@@ -10,7 +10,7 @@ import '../../repository/providers/repository_providers.dart';
 
 // Provider que lista aspirantes en estado 'registrado'
 final pendingMembersProvider =
-    FutureProvider.autoDispose<List<dynamic>>((ref) async {
+FutureProvider.autoDispose<List<dynamic>>((ref) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
 
@@ -28,7 +28,7 @@ final pendingMembersProvider =
 });
 
 final pendingDocumentsProvider =
-    FutureProvider.autoDispose<List<RepositoryDocument>>((ref) async {
+FutureProvider.autoDispose<List<RepositoryDocument>>((ref) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
   if (user == null) return [];
@@ -42,18 +42,18 @@ final pendingDocumentsProvider =
   final response = await supabase
       .from('publicaciones_repositorio')
       .select(
-          'id, id_autor, id_club, titulo, descripcion, categoria, area_conocimiento, etiquetas, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
+      'id, id_autor, id_club, titulo, descripcion, categoria, area_conocimiento, etiquetas, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
       .eq('id_club', profile['id_club'])
       .eq('estado', 'pendiente')
       .order('fecha_creacion', ascending: true);
 
   return (response as List<dynamic>)
       .map((item) =>
-          RepositoryDocument.fromJson(Map<String, dynamic>.from(item as Map)))
+      RepositoryDocument.fromJson(Map<String, dynamic>.from(item as Map)))
       .toList();
 });
 
-// 🛡️ PASO 2: Clase de Acciones con Blindaje de Excepciones
+// PASO 2: Clase de Acciones con Blindaje Estricto
 class CoordinatorActions {
   static Future<bool> approveMember(WidgetRef ref, String targetUserId) async {
     final supabase = ref.read(supabaseClientProvider);
@@ -73,39 +73,32 @@ class CoordinatorActions {
 
       return true;
     } on PostgrestException catch (e) {
-      debugPrint('Error de base de datos: ${e.message}');
+      debugPrint('Error de base de datos al aprobar miembro: ${e.message}');
       return false;
     } catch (e) {
-      debugPrint('Error inesperado: $e');
+      debugPrint('Error inesperado al aprobar miembro: $e');
       return false;
     }
   }
 
   static Future<bool> reviewDocument(
-    WidgetRef ref,
-    String documentId, {
-    required bool approved,
-  }) async {
+      WidgetRef ref,
+      String documentId, {
+        required bool approved,
+      }) async {
     final supabase = ref.read(supabaseClientProvider);
 
     try {
-      try {
-        await supabase.rpc(
-          'revisar_publicacion_repositorio',
-          params: {
-            'p_id_publicacion': documentId,
-            'p_aprobada': approved,
-          },
-        );
-      } on PostgrestException catch (e) {
-        // Algunos entornos del proyecto aún no tienen el RPC instalado.
-        // La actualización directa mantiene funcional el flujo de curaduría.
-        if (e.code != 'PGRST202' && e.code != '42883') rethrow;
-        await supabase.from('publicaciones_repositorio').update({
-          'estado': approved ? 'aprobado' : 'rechazado',
-        }).eq('id', documentId);
-      }
+      // Si el RPC no existe o falla, la aplicación mostrará el error y no alterará los datos.
+      await supabase.rpc(
+        'revisar_publicacion_repositorio',
+        params: {
+          'p_id_publicacion': documentId,
+          'p_aprobada': approved,
+        },
+      );
 
+      // Limpiamos la caché si la operación en BD fue exitosa
       final cache = ref.read(appCacheServiceProvider);
       await cache.invalidatePrefix('repository:');
       await cache.invalidatePrefix('club:');
@@ -115,10 +108,10 @@ class CoordinatorActions {
 
       return true;
     } on PostgrestException catch (e) {
-      debugPrint('Error de base de datos: ${e.message}');
+      debugPrint('Error de seguridad/base de datos al revisar documento: ${e.message}');
       return false;
     } catch (e) {
-      debugPrint('Error inesperado: $e');
+      debugPrint('Error inesperado al revisar documento: $e');
       return false;
     }
   }

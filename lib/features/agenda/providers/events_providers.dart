@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart'; // Agregado para debugPrint
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/cache/app_cache_service.dart';
@@ -231,12 +231,12 @@ class EventActions {
       'ubicacion': input.location.trim(),
     }).select('id').single();
 
-    await _createEventNotification(
-      clubId: clubId.toString(),
-      eventId: inserted['id'].toString(),
-      title: input.title.trim(),
-      startAt: input.startTime,
-    );
+    //await _createEventNotification(
+      //clubId: clubId.toString(),
+      //eventId: inserted['id'].toString(),
+      //title: input.title.trim(),
+      //startAt: input.startTime,
+    //);
 
     await ref.read(appCacheServiceProvider).invalidatePrefix('events:');
     ref.invalidate(eventsProvider);
@@ -306,40 +306,7 @@ class EventActions {
     }
   }
 
-  Future<void> _createEventNotification({
-    required String clubId,
-    required String eventId,
-    required String title,
-    required DateTime startAt,
-  }) async {
-    final supabase = ref.read(supabaseClientProvider);
-    final members = await supabase
-        .from('perfiles')
-        .select('id')
-        .eq('id_club', clubId)
-        .eq('estado', 'activo');
 
-    final rows = (members as List<dynamic>).map((member) {
-      return {
-        'id_usuario': (member as Map)['id'],
-        'tipo': 'agenda',
-        'titulo': 'Nuevo evento del club',
-        'cuerpo':
-        '$title • ${startAt.day.toString().padLeft(2, '0')}/${startAt.month.toString().padLeft(2, '0')} ${startAt.hour.toString().padLeft(2, '0')}:${startAt.minute.toString().padLeft(2, '0')}',
-        'id_referencia': eventId,
-      };
-    }).toList();
-
-    // TODO: Migrar esta lógica a un Trigger de Supabase para mejor rendimiento (evita cuellos de botella)
-    if (rows.isNotEmpty) {
-      try {
-        await supabase.from('notificaciones').insert(rows);
-      } catch (e) {
-        // Solo registramos el error en consola, pero no evitamos que el evento se cree
-        debugPrint('Error creando notificaciones en lote: $e');
-      }
-    }
-  }
 
   Future<void> _assertCanManage(String eventClubId) async {
     final supabase = ref.read(supabaseClientProvider);
