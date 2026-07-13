@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../core/cache/app_cache_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
+import '../explore/providers/explore_providers.dart';
 import 'providers/repository_providers.dart';
 
 class RepositoryScreen extends ConsumerStatefulWidget {
@@ -61,10 +62,13 @@ class _RepositoryScreenState extends ConsumerState<RepositoryScreen> {
       appBar: const CucAppBar(),
       body: RefreshIndicator(
         onRefresh: () async {
-          await ref
-              .read(appCacheServiceProvider)
-              .invalidatePrefix('repository:documents:');
-          ref.invalidate(repositoryDocumentsProvider);
+// 1. Limpiamos la caché de Supabase
+          await ref.read(appCacheServiceProvider).invalidatePrefix('explore:news');
+
+          // 2. ARQUITECTURA SEGURA:
+          // Retornamos ref.refresh().future. Esto le dice al RefreshIndicator
+          // que siga girando hasta que lleguen los datos, sin destruir la lista actual.
+          return await ref.refresh(newsProvider.future);
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),

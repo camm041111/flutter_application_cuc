@@ -72,9 +72,8 @@ class NewsInput {
   });
 }
 
-// ─── PROVIDERS DE ESTADO MODERNIZADOS ────────────────────────────────────
+// ─── PROVIDERS DE ESTADO ────────────────────────────────────
 
-// Reemplazamos StateProvider por un Notifier robusto para el buscador
 final newsSearchProvider = NotifierProvider<NewsSearchNotifier, String>(NewsSearchNotifier.new);
 
 class NewsSearchNotifier extends Notifier<String> {
@@ -150,12 +149,26 @@ class ExploreActions {
 
   Future<bool> toggleLike(String newsId) async {
     final supabase = ref.read(supabaseClientProvider);
+
     try {
-      await supabase.rpc('toggle_like_noticia', params: {'p_id_noticia': newsId});
+      await supabase.rpc(
+        'toggle_like_noticia',
+        params: {
+          'p_id_noticia': newsId,
+        },
+      );
+
+      // Eliminar la caché
+      await ref
+          .read(appCacheServiceProvider)
+          .invalidatePrefix('explore:news');
+
+      // Reconstruir el provider
       ref.invalidate(newsProvider);
+
       return true;
     } catch (e) {
-      debugPrint('Error al dar like: $e');
+      debugPrint(e.toString());
       return false;
     }
   }
