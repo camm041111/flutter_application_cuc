@@ -5,10 +5,41 @@ import '../../../core/theme/app_theme.dart';
 import '../providers/explore_providers.dart';
 import 'news_tag.dart';
 
-class NewsCard extends ConsumerWidget {
+class NewsCard extends ConsumerStatefulWidget {
   const NewsCard({super.key, required this.post});
 
   final NewsPost post;
+
+  @override
+  ConsumerState<NewsCard> createState() => _NewsCardState();
+}
+
+class _NewsCardState extends ConsumerState<NewsCard> {
+  // 🧠 MICRO-ESTADO LOCAL: La tarjeta recordará su propio Like temporalmente
+  late bool _isLikedLocal;
+  late int _likesCountLocal;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncWithProvider();
+  }
+
+  @override
+  void didUpdateWidget(covariant NewsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Si Riverpod actualiza la lista global, sincronizamos nuestro estado local con la verdad absoluta de la BD
+    if (oldWidget.post.id != widget.post.id ||
+        oldWidget.post.likesCount != widget.post.likesCount ||
+        oldWidget.post.isLikedByMe != widget.post.isLikedByMe) {
+      _syncWithProvider();
+    }
+  }
+
+  void _syncWithProvider() {
+    _isLikedLocal = widget.post.isLikedByMe;
+    _likesCountLocal = widget.post.likesCount;
+  }
 
   String _relativeTime(DateTime date) {
     final diff = DateTime.now().difference(date);
@@ -20,8 +51,7 @@ class NewsCard extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Escuchamos el estado para saber si podemos mostrar el botón de eliminar
+  Widget build(BuildContext context) {
     final canPublishAsync = ref.watch(canPublishNewsProvider);
     final canManage = canPublishAsync.asData?.value ?? false;
 
@@ -32,9 +62,9 @@ class NewsCard extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (post.imageUrl != null && post.imageUrl!.isNotEmpty)
+          if (widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty)
             CachedNetworkImage(
-              imageUrl: post.imageUrl!,
+              imageUrl: widget.post.imageUrl!,
               height: 168,
               width: double.infinity,
               fit: BoxFit.cover,
@@ -71,11 +101,8 @@ class NewsCard extends ConsumerWidget {
               children: [
                 Row(
                   children: [
-                    // Imagen/Avatar del Club (Clickeable)
                     InkWell(
-                      onTap: () {
-                        // context.push('/club/${post.clubId}'); // Descomentar cuando configures el router
-                      },
+                      onTap: () {},
                       child: Container(
                         width: 40,
                         height: 40,
@@ -91,27 +118,21 @@ class NewsCard extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Nombre del club (Clickeable)
                           InkWell(
-                            onTap: () {
-                              // context.push('/club/${post.clubId}');
-                            },
-                            child: Text(post.clubName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                            onTap: () {},
+                            child: Text(widget.post.clubName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                           ),
                           Row(
                             children: [
-                              // Nombre del autor (Clickeable)
                               InkWell(
-                                onTap: () {
-                                  // context.push('/profile/${post.authorId}');
-                                },
+                                onTap: () {},
                                 child: Text(
-                                  '@${post.authorName}',
+                                  '@${widget.post.authorName}',
                                   style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
                                 ),
                               ),
                               Text(
-                                ' • ${_relativeTime(post.createdAt)}',
+                                ' • ${_relativeTime(widget.post.createdAt)}',
                                 style: const TextStyle(fontSize: 11, color: AppColors.muted),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -120,7 +141,6 @@ class NewsCard extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    // Menú de borrado (Solo si el rol lo permite)
                     if (canManage)
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.muted),
@@ -129,7 +149,7 @@ class NewsCard extends ConsumerWidget {
                             context: context,
                             builder: (ctx) => AlertDialog(
                               title: const Text('Eliminar noticia'),
-                              content: const Text('¿Estás seguro de que deseas borrar esta publicación? Esta acción no se puede deshacer.'),
+                              content: const Text('¿Estás seguro de que deseas borrar esta publicación?'),
                               actions: [
                                 TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
                                 TextButton(
@@ -140,7 +160,7 @@ class NewsCard extends ConsumerWidget {
                             ),
                           );
                           if (confirm == true) {
-                            await ref.read(exploreActionsProvider).deleteNews(post.id);
+                            await ref.read(exploreActionsProvider).deleteNews(widget.post.id);
                           }
                         },
                       ),
@@ -149,30 +169,47 @@ class NewsCard extends ConsumerWidget {
                 const SizedBox(height: 12),
 
                 Text(
-                  post.title,
+                  widget.post.title,
                   style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  post.content,
+                  widget.post.content,
                   style: const TextStyle(fontSize: 13, color: AppColors.onSurface, height: 1.5),
                 ),
                 const SizedBox(height: 12),
 
-                // Mapeo Visual de Etiquetas (Hashtags)
-                if (post.tags.isNotEmpty)
+                if (widget.post.tags.isNotEmpty)
                   Wrap(
                     spacing: 6.0,
                     runSpacing: 6.0,
-                    children: post.tags.map((tag) => NewsTag(label: tag)).toList(),
+                    children: widget.post.tags.map((tag) => NewsTag(label: tag)).toList(),
                   ),
 
                 const SizedBox(height: 12),
 
-                // Botón "Me Gusta"
+                // ⚡ BOTÓN "ME GUSTA" CON RESPUESTA INSTANTÁNEA ⚡
                 InkWell(
-                  onTap: () {
-                    ref.read(exploreActionsProvider).toggleLike(post.id);
+                  onTap: () async {
+                    // 1. Mutación Optimista: Actualizamos la UI al instante
+                    setState(() {
+                      _isLikedLocal = !_isLikedLocal;
+                      _likesCountLocal += _isLikedLocal ? 1 : -1;
+                    });
+
+                    // 2. Ejecutamos tu provider en el backend de forma silenciosa
+                    final success = await ref.read(exploreActionsProvider).toggleLike(widget.post.id);
+
+                    // 3. Rollback: Si la BD rechaza el like o el internet falla, revertimos el color
+                    if (!success && mounted) {
+                      setState(() {
+                        _isLikedLocal = !_isLikedLocal;
+                        _likesCountLocal += _isLikedLocal ? 1 : -1;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Error al conectar con el servidor')),
+                      );
+                    }
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
@@ -181,17 +218,17 @@ class NewsCard extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          post.isLikedByMe ? Icons.favorite : Icons.favorite_border,
-                          color: post.isLikedByMe ? Colors.redAccent : AppColors.muted,
+                          _isLikedLocal ? Icons.favorite : Icons.favorite_border,
+                          color: _isLikedLocal ? Colors.redAccent : AppColors.muted,
                           size: 20,
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          post.likesCount.toString(),
+                          _likesCountLocal.toString(),
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: post.isLikedByMe ? Colors.redAccent : AppColors.muted,
+                            color: _isLikedLocal ? Colors.redAccent : AppColors.muted,
                           ),
                         ),
                       ],
