@@ -33,8 +33,13 @@ class ExploreScreen extends ConsumerWidget {
       appBar: const CucAppBar(),
       body: RefreshIndicator(
         onRefresh: () async {
+          // 1. Limpiamos la caché de Supabase
           await ref.read(appCacheServiceProvider).invalidatePrefix('explore:news');
-          ref.invalidate(newsProvider);
+
+          // 2. ARQUITECTURA SEGURA:
+          // Retornamos ref.refresh().future. Esto le dice al RefreshIndicator
+          // que siga girando hasta que lleguen los datos, sin destruir la lista actual.
+          return await ref.refresh(newsProvider.future);
         },
         child: CustomScrollView(
           slivers: [
@@ -68,7 +73,11 @@ class ExploreScreen extends ConsumerWidget {
                     itemCount: posts.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (_, index) {
-                      return NewsCard(post: posts[index]);
+                      final noticia = posts[index];
+                      return NewsCard(
+                        // 🛡️ EL BLINDAJE: Esto evita que Flutter confunda los estados al refrescar
+                        key: ValueKey(noticia.id),
+                        post: noticia,);
                     },
                   ),
                 );
