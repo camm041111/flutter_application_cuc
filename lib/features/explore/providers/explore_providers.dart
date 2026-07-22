@@ -85,16 +85,47 @@ class NewsSearchNotifier extends Notifier<String> {
   }
 }
 
-final canPublishNewsProvider = FutureProvider.autoDispose<bool>((ref) async {
+class NewsPermissions {
+  const NewsPermissions({
+    required this.canPublish,
+    this.clubId,
+  });
+
+  final bool canPublish;
+  final String? clubId;
+
+  bool canManage(NewsPost post) =>
+      canPublish && clubId != null && clubId == post.clubId;
+}
+
+final newsPermissionsProvider = FutureProvider.autoDispose<NewsPermissions>((ref) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
-  if (user == null) return false;
+  if (user == null) return const NewsPermissions(canPublish: false);
 
-  final profile = await supabase.from('perfiles').select('rol, estado').eq('id', user.id).single();
+  final profile = await supabase
+      .from('perfiles')
+      .select('id_club, rol, estado')
+      .eq('id', user.id)
+      .single();
   final role = (profile['rol'] ?? '').toString();
   final status = (profile['estado'] ?? '').toString();
+  final clubId = profile['id_club']?.toString();
 
-  return status == 'activo' && (role == 'coordinador' || role == 'lider');
+  return NewsPermissions(
+    canPublish: status == 'activo' &&
+        clubId != null &&
+        (role == 'coordinador' || role == 'lider'),
+    clubId: clubId,
+  );
+});
+
+final canPublishNewsProvider = Provider.autoDispose<AsyncValue<bool>>((ref) {
+  return ref.watch(newsPermissionsProvider).whenData((value) => value.canPublish);
+});
+
+final canManageNewsProvider = Provider.autoDispose.family<AsyncValue<bool>, NewsPost>((ref, post) {
+  return ref.watch(newsPermissionsProvider).whenData((value) => value.canManage(post));
 });
 
 final newsProvider = FutureProvider.autoDispose<List<NewsPost>>((ref) async {
@@ -107,7 +138,7 @@ final newsProvider = FutureProvider.autoDispose<List<NewsPost>>((ref) async {
 
   return cache.staleWhileRevalidate<List<NewsPost>>(
     ref: ref,
-    key: 'explore:news_feed_$searchQuery',
+    key: 'explore:news_feed_${user.id}_$searchQuery',
     ttl: const Duration(minutes: 5),
     fetch: () async {
       // ARQUITECTURA SEGURA: Instanciamos la consulta base
@@ -173,10 +204,29 @@ class ExploreActions {
     }
   }
 
-  Future<bool> deleteNews(String newsId) async {
+  Future<bool> deleteNews(NewsPost post) async {
     final supabase = ref.read(supabaseClientProvider);
     try {
-      await supabase.from('noticias').delete().eq('id', newsId);
+      final user = supabase.auth.currentUser;
+      if (user == null) return false;
+
+      final profile = await supabase
+          .from('perfiles')
+          .select('id_club, rol, estado')
+          .eq('id', user.id)
+          .single();
+      final role = (profile['rol'] ?? '').toString();
+      final canManage = profile['estado'] == 'activo' &&
+          profile['id_club']?.toString() == post.clubId &&
+          (role == 'coordinador' || role == 'lider');
+      if (!canManage) return false;
+
+      await supabase
+          .from('noticias')
+          .delete()
+          .eq('id', post.id)
+          .eq('id_club', post.clubId);
+      await ref.read(appCacheServiceProvider).invalidatePrefix('explore:news');
       ref.invalidate(newsProvider);
       return true;
     } catch (e) {

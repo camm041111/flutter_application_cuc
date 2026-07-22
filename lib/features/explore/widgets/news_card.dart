@@ -52,8 +52,8 @@ class _NewsCardState extends ConsumerState<NewsCard> {
 
   @override
   Widget build(BuildContext context) {
-    final canPublishAsync = ref.watch(canPublishNewsProvider);
-    final canManage = canPublishAsync.asData?.value ?? false;
+    final canManageAsync = ref.watch(canManageNewsProvider(widget.post));
+    final canManage = canManageAsync.asData?.value ?? false;
 
     return Card(
       elevation: 2,
@@ -160,7 +160,16 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                             ),
                           );
                           if (confirm == true) {
-                            await ref.read(exploreActionsProvider).deleteNews(widget.post.id);
+                            final deleted = await ref
+                                .read(exploreActionsProvider)
+                                .deleteNews(widget.post);
+                            if (!deleted && mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('No tienes permiso para eliminar esta noticia.'),
+                                ),
+                              );
+                            }
                           }
                         },
                       ),
