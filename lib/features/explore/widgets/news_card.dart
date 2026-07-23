@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/explore_providers.dart';
 import 'news_tag.dart';
+import 'news_rich_text.dart';
 
 class NewsCard extends ConsumerStatefulWidget {
   const NewsCard({super.key, required this.post});
@@ -74,8 +75,10 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                 color: AppColors.surface,
                 child: const Center(
                   child: SizedBox(
-                    width: 24, height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary),
                   ),
                 ),
               ),
@@ -86,14 +89,15 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                 child: const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.broken_image_outlined, color: AppColors.muted, size: 32),
+                    Icon(Icons.broken_image_outlined,
+                        color: AppColors.muted, size: 32),
                     SizedBox(height: 8),
-                    Text('Error al cargar', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+                    Text('Error al cargar',
+                        style: TextStyle(color: AppColors.muted, fontSize: 12)),
                   ],
                 ),
               ),
             ),
-
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -110,7 +114,8 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.campaign_outlined, color: AppColors.primary, size: 20),
+                        child: const Icon(Icons.campaign_outlined,
+                            color: AppColors.primary, size: 20),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -120,7 +125,9 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                         children: [
                           InkWell(
                             onTap: () {},
-                            child: Text(widget.post.clubName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                            child: Text(widget.post.clubName,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w700, fontSize: 13)),
                           ),
                           Row(
                             children: [
@@ -128,12 +135,16 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                                 onTap: () {},
                                 child: Text(
                                   '@${widget.post.authorName}',
-                                  style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                               Text(
                                 ' • ${_relativeTime(widget.post.createdAt)}',
-                                style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppColors.muted),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
@@ -143,18 +154,23 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                     ),
                     if (canManage)
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20, color: AppColors.muted),
+                        icon: const Icon(Icons.delete_outline,
+                            size: 20, color: AppColors.muted),
                         onPressed: () async {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
                               title: const Text('Eliminar noticia'),
-                              content: const Text('¿Estás seguro de que deseas borrar esta publicación?'),
+                              content: const Text(
+                                  '¿Estás seguro de que deseas borrar esta publicación?'),
                               actions: [
-                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+                                TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Cancelar')),
                                 TextButton(
                                   onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Eliminar', style: TextStyle(color: Colors.red)),
+                                  child: const Text('Eliminar',
+                                      style: TextStyle(color: Colors.red)),
                                 ),
                               ],
                             ),
@@ -166,7 +182,8 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                             if (!deleted && mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('No tienes permiso para eliminar esta noticia.'),
+                                  content: Text(
+                                      'No tienes permiso para eliminar esta noticia.'),
                                 ),
                               );
                             }
@@ -179,20 +196,22 @@ class _NewsCardState extends ConsumerState<NewsCard> {
 
                 Text(
                   widget.post.title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
+                  style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  widget.post.content,
-                  style: const TextStyle(fontSize: 13, color: AppColors.onSurface, height: 1.5),
-                ),
+                NewsRichText(content: widget.post.content),
                 const SizedBox(height: 12),
 
                 if (widget.post.tags.isNotEmpty)
                   Wrap(
                     spacing: 6.0,
                     runSpacing: 6.0,
-                    children: widget.post.tags.map((tag) => NewsTag(label: tag)).toList(),
+                    children: widget.post.tags
+                        .map((tag) => NewsTag(label: tag))
+                        .toList(),
                   ),
 
                 const SizedBox(height: 12),
@@ -207,7 +226,9 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                     });
 
                     // 2. Ejecutamos tu provider en el backend de forma silenciosa
-                    final success = await ref.read(exploreActionsProvider).toggleLike(widget.post.id);
+                    final success = await ref
+                        .read(exploreActionsProvider)
+                        .toggleLike(widget.post.id);
 
                     // 3. Rollback: Si la BD rechaza el like o el internet falla, revertimos el color
                     if (!success && mounted) {
@@ -216,19 +237,25 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                         _likesCountLocal += _isLikedLocal ? 1 : -1;
                       });
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Error al conectar con el servidor')),
+                        const SnackBar(
+                            content: Text('Error al conectar con el servidor')),
                       );
                     }
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4.0, vertical: 4.0),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          _isLikedLocal ? Icons.favorite : Icons.favorite_border,
-                          color: _isLikedLocal ? Colors.redAccent : AppColors.muted,
+                          _isLikedLocal
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: _isLikedLocal
+                              ? Colors.redAccent
+                              : AppColors.muted,
                           size: 20,
                         ),
                         const SizedBox(width: 6),
@@ -237,7 +264,9 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: _isLikedLocal ? Colors.redAccent : AppColors.muted,
+                            color: _isLikedLocal
+                                ? Colors.redAccent
+                                : AppColors.muted,
                           ),
                         ),
                       ],
