@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/social_tag_utils.dart';
 import '../../../core/widgets/correct_snackbar.dart';
 import '../providers/explore_providers.dart';
 
@@ -18,11 +20,14 @@ class NewsComposerSheet extends ConsumerStatefulWidget {
 class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
   final _titleCtrl = TextEditingController();
   final _contentCtrl = TextEditingController();
+  final _tagCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _tags = <String>[];
 
   XFile? _selectedImage;
   bool _saving = false;
   String? _inlineError;
+  String? _tagError;
 
   void _wrapSelection(String prefix, String suffix,
       {String placeholder = 'texto'}) {
@@ -46,11 +51,11 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
 
   Future<void> _insertLink() async {
     final selection = _contentCtrl.selection;
-    final start = selection.isValid ? selection.start : _contentCtrl.text.length;
+    final start =
+        selection.isValid ? selection.start : _contentCtrl.text.length;
     final end = selection.isValid ? selection.end : start;
-    final selectedText = start != end
-        ? _contentCtrl.text.substring(start, end)
-        : '';
+    final selectedText =
+        start != end ? _contentCtrl.text.substring(start, end) : '';
 
     final result = await showModalBottomSheet<({String label, String url})>(
       context: context,
@@ -72,12 +77,52 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
   void dispose() {
     _titleCtrl.dispose();
     _contentCtrl.dispose();
+    _tagCtrl.dispose();
     super.dispose();
+  }
+
+  bool _addTags(String rawValue) {
+    final values = rawValue.split(',');
+    var error = '';
+    var addedAny = false;
+
+    for (final value in values) {
+      final tag = normalizeSocialTag(value);
+      if (tag.isEmpty) continue;
+      if (tag.length > maxSocialTagLength) {
+        error =
+            'Cada etiqueta puede tener máximo $maxSocialTagLength caracteres.';
+        continue;
+      }
+      if (containsSocialTag(_tags, tag)) {
+        error = 'La etiqueta "$tag" ya fue agregada.';
+        continue;
+      }
+      if (_tags.length >= maxSocialTags) {
+        error = 'Puedes agregar hasta $maxSocialTags etiquetas.';
+        break;
+      }
+      _tags.add(tag);
+      addedAny = true;
+    }
+
+    setState(() {
+      _tagError = error.isEmpty ? null : error;
+      if (addedAny) _tagCtrl.clear();
+    });
+    return error.isEmpty;
+  }
+
+  void _removeTag(String tag) {
+    setState(() {
+      _tags.remove(tag);
+      _tagError = null;
+    });
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    await HapticFeedback.lightImpact();
+    unawaited(HapticFeedback.lightImpact());
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -135,6 +180,7 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
   Future<void> _submit() async {
     setState(() => _inlineError = null);
     if (!_formKey.currentState!.validate()) return;
+    if (_tagCtrl.text.trim().isNotEmpty && !_addTags(_tagCtrl.text)) return;
 
     setState(() => _saving = true);
     try {
@@ -143,6 +189,7 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
               title: _titleCtrl.text,
               content: _contentCtrl.text,
               imageFile: _selectedImage,
+              tags: List.unmodifiable(_tags),
             ),
           );
       if (!mounted) return;
@@ -266,6 +313,50 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
                         ? 'El contenido no puede estar vacío'
                         : null,
                   ),
+                  const SizedBox(height: 8),
+                  _buildFieldLabel('Etiquetas (opcional)'),
+                  if (_tags.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: _tags
+                          .map(
+                            (tag) => InputChip(
+                              label: Text(tag),
+                              onDeleted: _saving ? null : () => _removeTag(tag),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  TextField(
+                    controller: _tagCtrl,
+                    enabled: !_saving && _tags.length < maxSocialTags,
+                    textInputAction: TextInputAction.done,
+                    maxLength: maxSocialTagLength,
+                    decoration: InputDecoration(
+                      hintText: 'Ej. inteligencia artificial, convocatoria',
+                      helperText:
+                          'Enter o coma para agregar · ${_tags.length}/$maxSocialTags',
+                      errorText: _tagError,
+                      prefixIcon: const Icon(Icons.tag),
+                      suffixIcon: IconButton(
+                        tooltip: 'Agregar etiqueta',
+                        onPressed: _saving || _tags.length >= maxSocialTags
+                            ? null
+                            : () => _addTags(_tagCtrl.text),
+                        icon: const Icon(Icons.add_circle_outline),
+                      ),
+                    ),
+                    onChanged: (_) {
+                      if (_tagError != null) {
+                        setState(() => _tagError = null);
+                      }
+                    },
+                    onSubmitted: _addTags,
+                  ),
+                  const SizedBox(height: 8),
                   _buildFieldLabel('Imagen promocional (Máx 5MB)'),
                   const SizedBox(height: 4),
                   GestureDetector(
@@ -490,7 +581,9 @@ class _LinkEditorSheetState extends State<_LinkEditorSheet> {
                     children: [
                       Icon(Icons.link, color: AppColors.primary),
                       SizedBox(width: 10),
-                      Text('Agregar enlace', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+                      Text('Agregar enlace',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.w700)),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -520,11 +613,14 @@ class _LinkEditorSheetState extends State<_LinkEditorSheet> {
                     ),
                     validator: (value) {
                       final raw = value?.trim() ?? '';
-                      final normalized = raw.startsWith('http://') || raw.startsWith('https://')
+                      final normalized = raw.startsWith('http://') ||
+                              raw.startsWith('https://')
                           ? raw
                           : 'https://$raw';
                       final uri = Uri.tryParse(normalized);
-                      return uri == null || !uri.hasAuthority || uri.host.isEmpty
+                      return uri == null ||
+                              !uri.hasAuthority ||
+                              uri.host.isEmpty
                           ? 'Ingresa una dirección web válida'
                           : null;
                     },

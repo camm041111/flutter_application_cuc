@@ -1,4 +1,5 @@
-import 'dart:async'; // Necesario para el Timer
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,18 +18,13 @@ class _ExploreSearchBarState extends ConsumerState<ExploreSearchBar> {
 
   @override
   void dispose() {
-    // Es vital limpiar el timer cuando el widget se destruye para evitar fugas de memoria
     _debounce?.cancel();
     super.dispose();
   }
 
   void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) {
-      _debounce!.cancel();
-    }
-
-    // Configuramos el retraso de 500 milisegundos
-    _debounce = Timer(const Duration(milliseconds: 500), () {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
       ref.read(newsSearchProvider.notifier).setSearch(query);
     });
   }
@@ -37,39 +33,30 @@ class _ExploreSearchBarState extends ConsumerState<ExploreSearchBar> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            style: const TextStyle(fontSize: 14),
-            decoration: InputDecoration(
-              hintText: 'Buscar noticias o comunicados...',
-              hintStyle: const TextStyle(color: AppColors.muted),
-              prefixIcon: const Icon(Icons.search, color: AppColors.muted),
-              filled: true,
-              fillColor: AppColors.surface,
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primary),
-              ),
-            ),
-            onChanged: _onSearchChanged, // Enlazamos el debouncer aquí
+      child: TextField(
+        style: const TextStyle(fontSize: 14),
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Buscar noticias, personas o matrículas...',
+          hintStyle: const TextStyle(color: AppColors.muted),
+          prefixIcon: const Icon(Icons.search, color: AppColors.muted),
+          filled: true,
+          fillColor: AppColors.surface,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Noticias de clubes',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.border),
           ),
-        ],
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.primary),
+          ),
+        ),
+        onChanged: _onSearchChanged,
       ),
     );
   }

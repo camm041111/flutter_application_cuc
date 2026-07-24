@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../club/screens/club_profile_screen.dart';
+import '../../profile/profile_screen.dart';
 import '../providers/explore_providers.dart';
 import 'news_tag.dart';
 import 'news_rich_text.dart';
@@ -40,6 +42,24 @@ class _NewsCardState extends ConsumerState<NewsCard> {
   void _syncWithProvider() {
     _isLikedLocal = widget.post.isLikedByMe;
     _likesCountLocal = widget.post.likesCount;
+  }
+
+  void _openClubProfile() {
+    if (widget.post.clubId.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ClubProfileScreen(clubId: widget.post.clubId),
+      ),
+    );
+  }
+
+  void _openAuthorProfile() {
+    if (widget.post.authorId.isEmpty) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(userId: widget.post.authorId),
+      ),
+    );
   }
 
   String _relativeTime(DateTime date) {
@@ -106,7 +126,7 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                 Row(
                   children: [
                     InkWell(
-                      onTap: () {},
+                      onTap: _openClubProfile,
                       child: Container(
                         width: 40,
                         height: 40,
@@ -124,7 +144,7 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           InkWell(
-                            onTap: () {},
+                            onTap: _openClubProfile,
                             child: Text(widget.post.clubName,
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w700, fontSize: 13)),
@@ -132,7 +152,7 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                           Row(
                             children: [
                               InkWell(
-                                onTap: () {},
+                                onTap: _openAuthorProfile,
                                 child: Text(
                                   '@${widget.post.authorName}',
                                   style: const TextStyle(
@@ -179,7 +199,8 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                             final deleted = await ref
                                 .read(exploreActionsProvider)
                                 .deleteNews(widget.post);
-                            if (!deleted && mounted) {
+                            if (!context.mounted) return;
+                            if (!deleted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
@@ -231,7 +252,8 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                         .toggleLike(widget.post.id);
 
                     // 3. Rollback: Si la BD rechaza el like o el internet falla, revertimos el color
-                    if (!success && mounted) {
+                    if (!context.mounted) return;
+                    if (!success) {
                       setState(() {
                         _isLikedLocal = !_isLikedLocal;
                         _likesCountLocal += _isLikedLocal ? 1 : -1;

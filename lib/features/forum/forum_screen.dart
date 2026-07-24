@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/cache/app_cache_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/social_tag_utils.dart';
 import '../../core/widgets/cuc_app_bar.dart';
 import '../repository/providers/repository_providers.dart';
 import '../social/social_providers.dart';
@@ -814,10 +815,15 @@ class _ThreadComposerSheetState extends ConsumerState<_ThreadComposerSheet> {
   }
 
   void _addTag(String value) {
-    final tag = value.trim();
-    if (tag.isEmpty || _tags.contains(tag) || _tags.length >= 3) return;
+    final updated = sanitizeSocialTags([
+      ..._tags,
+      ...value.split(','),
+    ]);
+    if (updated.length == _tags.length) return;
     setState(() {
-      _tags.add(tag);
+      _tags
+        ..clear()
+        ..addAll(updated);
       _tagCtrl.clear();
     });
   }
@@ -919,8 +925,13 @@ class _ThreadComposerSheetState extends ConsumerState<_ThreadComposerSheet> {
                 ),
                 TextField(
                   controller: _tagCtrl,
-                  decoration: const InputDecoration(
-                      hintText: 'Agregar etiqueta, maximo 3'),
+                  enabled: _tags.length < maxSocialTags,
+                  maxLength: maxSocialTagLength,
+                  decoration: InputDecoration(
+                    hintText: 'Agregar etiqueta (opcional)',
+                    helperText:
+                        'Enter o coma para agregar · ${_tags.length}/$maxSocialTags',
+                  ),
                   onSubmitted: _addTag,
                 ),
                 const SizedBox(height: 16),
