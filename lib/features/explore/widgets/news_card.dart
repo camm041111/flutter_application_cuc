@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../club/screens/club_profile_screen.dart';
 import '../../profile/profile_screen.dart';
 import '../providers/explore_providers.dart';
+import 'news_image_attachment.dart';
 import 'news_tag.dart';
 import 'news_rich_text.dart';
 
@@ -18,7 +18,7 @@ class NewsCard extends ConsumerStatefulWidget {
 }
 
 class _NewsCardState extends ConsumerState<NewsCard> {
-  // 🧠 MICRO-ESTADO LOCAL: La tarjeta recordará su propio Like temporalmente
+  // la tarjeta recordará su propio Like temporalmente
   late bool _isLikedLocal;
   late int _likesCountLocal;
 
@@ -78,45 +78,18 @@ class _NewsCardState extends ConsumerState<NewsCard> {
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.border),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty)
-            CachedNetworkImage(
+            NewsImageAttachment(
               imageUrl: widget.post.imageUrl!,
-              height: 168,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                height: 168,
-                width: double.infinity,
-                color: AppColors.surface,
-                child: const Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.primary),
-                  ),
-                ),
-              ),
-              errorWidget: (context, url, error) => Container(
-                height: 168,
-                width: double.infinity,
-                color: AppColors.surfaceVariant,
-                child: const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.broken_image_outlined,
-                        color: AppColors.muted, size: 32),
-                    SizedBox(height: 8),
-                    Text('Error al cargar',
-                        style: TextStyle(color: AppColors.muted, fontSize: 12)),
-                  ],
-                ),
-              ),
+              newsId: widget.post.id,
             ),
           Padding(
             padding: const EdgeInsets.all(14),

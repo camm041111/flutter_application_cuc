@@ -23,7 +23,7 @@ class EventsList extends StatelessWidget {
     if (events.isEmpty) {
       return AgendaEmptyState(
         title: showFuture ? 'Sin próximos eventos' : 'Sin eventos pasados',
-        subtitle: 'Cuando haya registros en la base de datos aparecerán aquí.',
+        subtitle: 'Cuando haya eventos agendados aparecerán aquí.',
       );
     }
 
@@ -133,6 +133,7 @@ class _FeaturedEventCardState extends ConsumerState<_FeaturedEventCard> {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha:0.3),
