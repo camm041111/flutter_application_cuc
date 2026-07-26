@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../../../core/cache/app_cache_service.dart';
+import '../../../core/utils/social_tag_utils.dart';
 
 // ─── MODELOS ─────────────────────────────────────────────────────────────
 
@@ -46,12 +47,15 @@ class NewsPost {
       title: (json['titulo'] ?? '').toString(),
       content: (json['contenido'] ?? '').toString(),
       imageUrl: json['url_imagen']?.toString(),
-      createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ?? DateTime.now(),
+      createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ??
+          DateTime.now(),
       clubName: (club?['nombre'] ?? 'Club Desconocido').toString(),
       authorName: (autor?['nombre_completo'] ?? 'Autor').toString(),
       authorId: (json['id_autor'] ?? '').toString(),
       clubId: (json['id_club'] ?? '').toString(),
-      tags: (json['etiquetas'] as List<dynamic>? ?? []).map((e) => e.toString()).toList(),
+      tags: (json['etiquetas'] as List<dynamic>? ?? [])
+          .map((e) => e.toString())
+          .toList(),
       likesCount: (json['likes_count'] ?? 0) as int,
       isLikedByMe: likesArray.isNotEmpty,
     );
@@ -74,7 +78,8 @@ class NewsInput {
 
 // ─── PROVIDERS DE ESTADO ────────────────────────────────────
 
-final newsSearchProvider = NotifierProvider<NewsSearchNotifier, String>(NewsSearchNotifier.new);
+final newsSearchProvider =
+    NotifierProvider<NewsSearchNotifier, String>(NewsSearchNotifier.new);
 
 class NewsSearchNotifier extends Notifier<String> {
   @override
@@ -85,16 +90,131 @@ class NewsSearchNotifier extends Notifier<String> {
   }
 }
 
-final canPublishNewsProvider = FutureProvider.autoDispose<bool>((ref) async {
+class NewsPermissions {
+  const NewsPermissions({
+    required this.canPublish,
+    this.clubId,
+  });
+
+  final bool canPublish;
+  final String? clubId;
+
+  bool canManage(NewsPost post) =>
+      canPublish && clubId != null && clubId == post.clubId;
+}
+
+class ExploreProfileResult {
+  const ExploreProfileResult({
+    required this.id,
+    required this.name,
+    required this.username,
+    this.avatarUrl,
+    this.clubId,
+    this.clubName,
+  });
+
+  final String id;
+  final String name;
+  final String username;
+  final String? avatarUrl;
+  final String? clubId;
+  final String? clubName;
+
+  String get clubShortName => clubAbbreviation(clubName);
+
+  factory ExploreProfileResult.fromJson(Map<String, dynamic> json) {
+    final club = json['clubes'] as Map<String, dynamic>?;
+    return ExploreProfileResult(
+      id: json['id'].toString(),
+      name: (json['nombre_completo'] ?? '').toString(),
+      username: (json['matricula'] ?? '').toString(),
+      avatarUrl: json['url_avatar']?.toString(),
+      clubId: club?['id']?.toString(),
+      clubName: club?['nombre']?.toString(),
+    );
+  }
+}
+
+final newsPermissionsProvider =
+    FutureProvider.autoDispose<NewsPermissions>((ref) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
-  if (user == null) return false;
+  if (user == null) return const NewsPermissions(canPublish: false);
 
-  final profile = await supabase.from('perfiles').select('rol, estado').eq('id', user.id).single();
+  final profile = await supabase
+      .from('perfiles')
+      .select('id_club, rol, estado')
+      .eq('id', user.id)
+      .single();
   final role = (profile['rol'] ?? '').toString();
   final status = (profile['estado'] ?? '').toString();
+  final clubId = profile['id_club']?.toString();
 
-  return status == 'activo' && (role == 'coordinador' || role == 'lider');
+  return NewsPermissions(
+    canPublish: status == 'activo' &&
+        clubId != null &&
+        (role == 'coordinador' || role == 'lider'),
+    clubId: clubId,
+  );
+});
+
+final canPublishNewsProvider = Provider.autoDispose<AsyncValue<bool>>((ref) {
+  return ref
+      .watch(newsPermissionsProvider)
+      .whenData((value) => value.canPublish);
+});
+
+final canManageNewsProvider =
+    Provider.autoDispose.family<AsyncValue<bool>, NewsPost>((ref, post) {
+  return ref
+      .watch(newsPermissionsProvider)
+      .whenData((value) => value.canManage(post));
+});
+
+final exploreProfileSearchProvider =
+    FutureProvider.autoDispose<List<ExploreProfileResult>>((ref) async {
+  final supabase = ref.read(supabaseClientProvider);
+  final user = supabase.auth.currentUser;
+  final rawSearch = ref.watch(newsSearchProvider).trim();
+  if (user == null || rawSearch.length < 2) return const [];
+
+  final search = rawSearch
+      .replaceAll(RegExp(r'[%_]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (search.length < 2) return const [];
+
+  const columns =
+      'id, nombre_completo, matricula, url_avatar, clubes(id, nombre)';
+  final responses = await Future.wait([
+    supabase
+        .from('perfiles')
+        .select(columns)
+        .neq('id', user.id)
+        .eq('estado', 'activo')
+        .ilike('nombre_completo', '%$search%')
+        .order('nombre_completo')
+        .limit(12),
+    supabase
+        .from('perfiles')
+        .select(columns)
+        .neq('id', user.id)
+        .eq('estado', 'activo')
+        .ilike('matricula', '%$search%')
+        .order('nombre_completo')
+        .limit(12),
+  ]);
+
+  final uniqueProfiles = <String, ExploreProfileResult>{};
+  for (final response in responses) {
+    for (final item in response) {
+      final profile = ExploreProfileResult.fromJson(item);
+      uniqueProfiles[profile.id] = profile;
+    }
+  }
+  final profiles = uniqueProfiles.values.toList()
+    ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+  return profiles.take(12).toList();
 });
 
 final newsProvider = FutureProvider.autoDispose<List<NewsPost>>((ref) async {
@@ -107,13 +227,11 @@ final newsProvider = FutureProvider.autoDispose<List<NewsPost>>((ref) async {
 
   return cache.staleWhileRevalidate<List<NewsPost>>(
     ref: ref,
-    key: 'explore:news_feed_$searchQuery',
+    key: 'explore:news_feed_${user.id}_$searchQuery',
     ttl: const Duration(minutes: 5),
     fetch: () async {
       // ARQUITECTURA SEGURA: Instanciamos la consulta base
-      var query = supabase
-          .from('noticias')
-          .select('''
+      var query = supabase.from('noticias').select('''
             id, titulo, contenido, url_imagen, fecha_creacion, id_autor, id_club, etiquetas, likes_count,
             perfiles:perfiles!noticias_id_autor_fkey(nombre_completo),
             clubes(nombre),
@@ -128,20 +246,26 @@ final newsProvider = FutureProvider.autoDispose<List<NewsPost>>((ref) async {
       }
 
       // 2. Aplicamos modificadores al final y disparamos la petición
-      final response = await query.order('fecha_creacion', ascending: false).limit(50);
+      final response =
+          await query.order('fecha_creacion', ascending: false).limit(50);
 
       return (response as List<dynamic>)
-          .map((item) => NewsPost.fromJson(Map<String, dynamic>.from(item as Map), user.id))
+          .map((item) => NewsPost.fromJson(
+              Map<String, dynamic>.from(item as Map), user.id))
           .toList();
     },
-    fromJson: (json) => (json as List<dynamic>).map((item) => NewsPost.fromJson(item, user.id)).toList(),
+    fromJson: (json) => (json as List<dynamic>)
+        .map((item) => NewsPost.fromJson(item, user.id))
+        .toList(),
     toJson: (value) => [],
+    persistent: false,
   );
 });
 
 // ─── ACCIONES (Lógica de Negocio) ────────────────────────────────────────
 
-final exploreActionsProvider = Provider<ExploreActions>((ref) => ExploreActions(ref));
+final exploreActionsProvider =
+    Provider<ExploreActions>((ref) => ExploreActions(ref));
 
 class ExploreActions {
   ExploreActions(this.ref);
@@ -159,9 +283,7 @@ class ExploreActions {
       );
 
       // Eliminar la caché
-      await ref
-          .read(appCacheServiceProvider)
-          .invalidatePrefix('explore:news');
+      await ref.read(appCacheServiceProvider).invalidatePrefix('explore:news');
 
       // Reconstruir el provider
       ref.invalidate(newsProvider);
@@ -173,10 +295,29 @@ class ExploreActions {
     }
   }
 
-  Future<bool> deleteNews(String newsId) async {
+  Future<bool> deleteNews(NewsPost post) async {
     final supabase = ref.read(supabaseClientProvider);
     try {
-      await supabase.from('noticias').delete().eq('id', newsId);
+      final user = supabase.auth.currentUser;
+      if (user == null) return false;
+
+      final profile = await supabase
+          .from('perfiles')
+          .select('id_club, rol, estado')
+          .eq('id', user.id)
+          .single();
+      final role = (profile['rol'] ?? '').toString();
+      final canManage = profile['estado'] == 'activo' &&
+          profile['id_club']?.toString() == post.clubId &&
+          (role == 'coordinador' || role == 'lider');
+      if (!canManage) return false;
+
+      await supabase
+          .from('noticias')
+          .delete()
+          .eq('id', post.id)
+          .eq('id_club', post.clubId);
+      await ref.read(appCacheServiceProvider).invalidatePrefix('explore:news');
       ref.invalidate(newsProvider);
       return true;
     } catch (e) {
@@ -190,8 +331,13 @@ class ExploreActions {
     final user = supabase.auth.currentUser;
     if (user == null) throw Exception('No autenticado');
 
-    final profile = await supabase.from('perfiles').select('id_club, rol, estado').eq('id', user.id).single();
-    if (profile['estado'] != 'activo' || (profile['rol'] != 'coordinador' && profile['rol'] != 'lider')) {
+    final profile = await supabase
+        .from('perfiles')
+        .select('id_club, rol, estado')
+        .eq('id', user.id)
+        .single();
+    if (profile['estado'] != 'activo' ||
+        (profile['rol'] != 'coordinador' && profile['rol'] != 'lider')) {
       throw Exception('Permisos insuficientes para publicar.');
     }
 
@@ -199,13 +345,14 @@ class ExploreActions {
     if (input.imageFile != null) {
       final bytes = await input.imageFile!.readAsBytes();
       final fileExt = input.imageFile!.path.split('.').last.toLowerCase();
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${user.id}.$fileExt';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${user.id}.$fileExt';
 
       await supabase.storage.from('noticias').uploadBinary(
-        fileName,
-        bytes,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
-      );
+            fileName,
+            bytes,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+          );
       imageUrl = supabase.storage.from('noticias').getPublicUrl(fileName);
     }
 
@@ -215,10 +362,10 @@ class ExploreActions {
       'id_autor': user.id,
       'id_club': profile['id_club'],
       'url_imagen': imageUrl,
-      'etiquetas': input.tags,
+      'etiquetas': sanitizeSocialTags(input.tags),
     });
 
-    ref.read(appCacheServiceProvider).invalidatePrefix('explore:news');
+    await ref.read(appCacheServiceProvider).invalidatePrefix('explore:news');
     ref.invalidate(newsProvider);
   }
 }

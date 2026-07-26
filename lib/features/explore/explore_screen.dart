@@ -9,6 +9,7 @@ import 'widgets/explore_search_bar.dart';
 import 'widgets/news_card.dart';
 import 'widgets/news_composer_sheet.dart';
 import 'widgets/explore_empty_state.dart';
+import 'widgets/profile_search_results.dart';
 
 import 'providers/explore_providers.dart'; // Importación crucial
 
@@ -34,7 +35,9 @@ class ExploreScreen extends ConsumerWidget {
       body: RefreshIndicator(
         onRefresh: () async {
           // 1. Limpiamos la caché de Supabase
-          await ref.read(appCacheServiceProvider).invalidatePrefix('explore:news');
+          await ref
+              .read(appCacheServiceProvider)
+              .invalidatePrefix('explore:news');
 
           // 2. ARQUITECTURA SEGURA:
           // Retornamos ref.refresh().future. Esto le dice al RefreshIndicator
@@ -44,17 +47,29 @@ class ExploreScreen extends ConsumerWidget {
         child: CustomScrollView(
           slivers: [
             const SliverToBoxAdapter(child: ExploreSearchBar()),
+            const SliverToBoxAdapter(child: ProfileSearchResults()),
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
+                  'Noticias de clubes',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
 
             // Consumo real de los datos
             newsAsync.when(
               loading: () => const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                child: Center(
+                    child: CircularProgressIndicator(color: AppColors.primary)),
               ),
               error: (error, _) => SliverFillRemaining(
                 child: ExploreEmptyState(
                   icon: Icons.error_outline,
                   title: 'Error al cargar noticias',
-                  subtitle: error.toString(), // Este texto nos dirá si Supabase rechazó la conexión
+                  subtitle: error
+                      .toString(), // Este texto nos dirá si Supabase rechazó la conexión
                 ),
               ),
               data: (posts) {
@@ -63,7 +78,8 @@ class ExploreScreen extends ConsumerWidget {
                     child: ExploreEmptyState(
                       icon: Icons.campaign_outlined,
                       title: 'Sin noticias publicadas',
-                      subtitle: 'Cuando los líderes publiquen anuncios aparecerán aquí.',
+                      subtitle:
+                          'Cuando los líderes publiquen anuncios aparecerán aquí.',
                     ),
                   );
                 }
@@ -77,7 +93,8 @@ class ExploreScreen extends ConsumerWidget {
                       return NewsCard(
                         // 🛡️ EL BLINDAJE: Esto evita que Flutter confunda los estados al refrescar
                         key: ValueKey(noticia.id),
-                        post: noticia,);
+                        post: noticia,
+                      );
                     },
                   ),
                 );
@@ -89,11 +106,11 @@ class ExploreScreen extends ConsumerWidget {
       floatingActionButton: canPublishAsync.maybeWhen(
         data: (canPublish) => canPublish
             ? FloatingActionButton(
-          onPressed: () => _openNewsSheet(context),
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.background,
-          child: const Icon(Icons.campaign_outlined),
-        )
+                onPressed: () => _openNewsSheet(context),
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.background,
+                child: const Icon(Icons.campaign_outlined),
+              )
             : null,
         orElse: () => null,
       ),

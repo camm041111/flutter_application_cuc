@@ -86,7 +86,7 @@ class _EventCardState extends ConsumerState<EventCard> {
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: past ? const BorderSide(color: AppColors.border, width: 1) : BorderSide.none,
+        side: const BorderSide(color: AppColors.border),
       ),
       child: InkWell(
         onTap: () => showEventDetails(context, event),

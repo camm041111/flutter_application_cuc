@@ -21,11 +21,11 @@ class NewsTag extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
         decoration: BoxDecoration(
           // Equivalente a bg-surface-container-high
-          color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(4.0),
           // Equivalente a border border-primary/20
           border: Border.all(
-            color: colorScheme.primary.withOpacity(0.2),
+            color: colorScheme.primary.withValues(alpha: 0.2),
             width: 1.0,
           ),
         ),

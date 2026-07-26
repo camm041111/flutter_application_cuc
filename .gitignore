@@ -46,3 +46,4 @@ app.*.map.json
 
 # Ignora los archivos relacionados a API keys
 .env
+schema.sql
