@@ -7,6 +7,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../core/cache/app_cache_service.dart';
+import '../../core/constants/areas.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
 import '../explore/providers/explore_providers.dart';
@@ -368,7 +369,7 @@ class _RepoCardState extends ConsumerState<_RepoCard> {
                   const SizedBox(height: 2),
                   Text(
                     '${_formatDate(item.createdAt)} · ${item.clubName}'
-                    '${item.area.isEmpty ? '' : ' · ${_labelFor(repositoryAreaOptions, item.area)}'}',
+                    '${item.area.isEmpty ? '' : ' · ${_labelFor(areaOptions, item.area)}'}',
                     style:
                         const TextStyle(fontSize: 10, color: AppColors.muted),
                     overflow: TextOverflow.ellipsis,
@@ -633,7 +634,7 @@ class _UploadDocumentSheetState extends ConsumerState<_UploadDocumentSheet> {
   final _descriptionCtrl = TextEditingController();
   final _tagsCtrl = TextEditingController();
   String _category = repositoryCategoryOptions.keys.first;
-  String _area = repositoryAreaOptions.keys.first;
+  String _area = areaOptions.keys.first;
   PlatformFile? _file;
   bool _uploading = false;
 
@@ -771,7 +772,7 @@ class _UploadDocumentSheetState extends ConsumerState<_UploadDocumentSheet> {
               _FilterDropdown(
                 label: 'ÁREA DE CONOCIMIENTO',
                 value: _area,
-                options: repositoryAreaOptions,
+                options: areaOptions,
                 onChanged: (value) {
                   if (value != null) setState(() => _area = value);
                 },

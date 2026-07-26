@@ -221,7 +221,7 @@ class EventActions {
 
     _validateEventInput(input, allowPast: false);
 
-    final inserted = await supabase.from('eventos_agenda').insert({
+    await supabase.from('eventos_agenda').insert({
       'id_club': clubId,
       'titulo': input.title.trim(),
       'descripcion': input.description.trim(),

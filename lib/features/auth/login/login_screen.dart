@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/cuc_text_field.dart';
 import '../../../core/services/auth_service.dart';
+import '../forgot_password/forgot_password_screen.dart';
 import '../widgets/login_header.dart';
 import '../widgets/login_footer.dart';
 
@@ -15,28 +16,28 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  // Controladores para capturar la entrada de texto
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _otpController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   bool _isLoading = false;
   bool _showPassword = false;
+  bool _otpMode = false;
+  bool _otpSent = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 
-  /// Lógica de autenticación que cumple con el RF01.4
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-
     setState(() => _isLoading = true);
 
-    // Llamada al servicio de autenticación
     final errorMessage = await ref.read(authServiceProvider).iniciarSesion(
       correo: _emailController.text,
       contrasena: _passwordController.text,
@@ -44,9 +45,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     if (mounted) {
       setState(() => _isLoading = false);
-
       if (errorMessage != null) {
-        // Manejo de errores (Credenciales inválidas o falta de red)
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
@@ -54,10 +53,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-      } else {
-        // NOTA: No llamamos a context.go() aquí.
-        // El routerProvider detectará el cambio de sesión y redirigirá automáticamente
-        // a '/' o a '/pending' según el estado del usuario[cite: 3].
+      }
+    }
+  }
+
+  Future<void> _handleEnviarOtp() async {
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Ingresa tu correo primero.'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+
+    final errorMessage = await ref.read(authServiceProvider).enviarOtp(
+      correo: _emailController.text,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _otpSent = errorMessage == null;
+      });
+      if (errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleVerificarOtp() async {
+    if (_otpController.text.trim().isEmpty) return;
+    setState(() => _isLoading = true);
+
+    final errorMessage = await ref.read(authServiceProvider).verificarOtp(
+      correo: _emailController.text,
+      token: _otpController.text.trim(),
+    );
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (errorMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }
@@ -97,51 +149,128 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Campo de Contraseña
-                  CucTextField(
-                    controller: _passwordController,
-                    label: 'CONTRASEÑA',
-                    hint: '••••••••',
-                    prefixIcon: Icons.key_outlined,
-                    obscureText: !_showPassword,
-                    suffixIcon: IconButton(
-                      tooltip: _showPassword
-                          ? 'Ocultar contraseña'
-                          : 'Mostrar contraseña',
-                      icon: Icon(
-                        _showPassword
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        color: AppColors.muted,
+                  if (_otpMode)
+                    // Flujo OTP
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_otpSent) ...[
+                          CucTextField(
+                            controller: _otpController,
+                            label: 'CÓDIGO DE VERIFICACIÓN',
+                            hint: '123456',
+                            prefixIcon: Icons.pin_outlined,
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) return 'Ingresa el código';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _isLoading ? null : _handleVerificarOtp,
+                              icon: _isLoading
+                                  ? const SizedBox(
+                                      width: 18, height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(Icons.check, size: 18),
+                              label: Text(_isLoading ? 'VERIFICANDO...' : 'VERIFICAR CÓDIGO'),
+                            ),
+                          ),
+                        ] else ...[
+                          const Text(
+                            'Se enviará un código a tu correo.',
+                            style: TextStyle(color: AppColors.muted, fontSize: 12),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: _isLoading ? null : _handleEnviarOtp,
+                              icon: _isLoading
+                                  ? const SizedBox(
+                                      width: 18, height: 18,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(Icons.email_outlined, size: 18),
+                              label: Text(_isLoading ? 'ENVIANDO...' : 'ENVIAR CÓDIGO'),
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _otpMode = false;
+                              _otpSent = false;
+                            });
+                          },
+                          child: Text(
+                            'USAR CONTRASEÑA',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: AppColors.primary.withValues(alpha: 0.7),
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  else ...[
+                    // Flujo normal con contraseña
+                    CucTextField(
+                      controller: _passwordController,
+                      label: 'CONTRASEÑA',
+                      hint: '••••••••',
+                      prefixIcon: Icons.key_outlined,
+                      obscureText: !_showPassword,
+                      suffixIcon: IconButton(
+                        tooltip: _showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña',
+                        icon: Icon(
+                          _showPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: AppColors.muted,
+                        ),
+                        onPressed: () => setState(() => _showPassword = !_showPassword),
                       ),
-                      onPressed: () {
-                        setState(() => _showPassword = !_showPassword);
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
+                        return null;
                       },
                     ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Ingresa tu contraseña';
-                      return null;
-                    },
-                  ),
-
-                  _buildForgotPassword(),
-                  const SizedBox(height: 32),
-
-                  // Botón de Acción con estado de carga
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _handleLogin,
-                      icon: _isLoading
-                          ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                      )
-                          : const Icon(Icons.shield_outlined, size: 18),
-                      label: Text(_isLoading ? 'VERIFICANDO...' : 'INICIAR SESIÓN'),
+                    _buildForgotPassword(),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _handleLogin,
+                        icon: _isLoading
+                            ? const SizedBox(
+                                width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Icon(Icons.shield_outlined, size: 18),
+                        label: Text(_isLoading ? 'VERIFICANDO...' : 'INICIAR SESIÓN'),
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => setState(() => _otpMode = true),
+                      child: Text(
+                        'O ENVIAR CÓDIGO AL CORREO',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.primary.withValues(alpha: 0.7),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 40),
                   const LoginFooter(),
@@ -182,7 +311,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       alignment: Alignment.centerRight,
       child: TextButton(
         onPressed: () {
-          // Implementar flujo de recuperación RF01.6[cite: 3]
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const ForgotPasswordScreen(),
+            ),
+          );
         },
         child: Text(
           '¿Olvidaste tu contraseña?',

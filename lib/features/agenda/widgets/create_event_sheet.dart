@@ -88,6 +88,7 @@ class _CreateEventSheetState extends ConsumerState<CreateEventSheet> {
     if (_saving) return;
     await HapticFeedback.lightImpact();
 
+    if (!mounted) return;
     final value = await showDatePicker(
       context: context,
       initialDate: _date,
@@ -108,6 +109,7 @@ class _CreateEventSheetState extends ConsumerState<CreateEventSheet> {
     if (_saving) return;
     await HapticFeedback.lightImpact();
 
+    if (!mounted) return;
     final value = await showTimePicker(
       context: context,
       initialTime: start ? _start : _end,
@@ -121,7 +123,11 @@ class _CreateEventSheetState extends ConsumerState<CreateEventSheet> {
     );
     if (value == null) return;
     setState(() {
-      if (start) _start = value; else _end = value;
+      if (start) {
+        _start = value;
+      } else {
+        _end = value;
+      }
       _inlineError = null;
     });
   }

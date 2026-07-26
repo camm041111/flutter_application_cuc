@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -82,6 +83,60 @@ class AuthService {
         return 'Por favor, confirma tu correo institucional.';
       }
       return e.message;
+    } catch (e) {
+      return 'Error de conexión: $e';
+    }
+  }
+
+  /// Envía un correo de recuperación de contraseña
+  Future<String?> restablecerContrasena({
+    required String correo,
+  }) async {
+    try {
+      final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+      await _supabase.auth.resetPasswordForEmail(
+        correo.trim().toLowerCase(),
+        redirectTo: supabaseUrl,
+      );
+      return null;
+    } on AuthException catch (e) {
+      if (e.message.contains('Email not found')) {
+        return 'No existe una cuenta con ese correo.';
+      }
+      return 'Error: ${e.message}';
+    } catch (e) {
+      return 'Error de conexión: $e';
+    }
+  }
+
+  Future<String?> enviarOtp({
+    required String correo,
+  }) async {
+    try {
+      await _supabase.auth.signInWithOtp(
+        email: correo.trim().toLowerCase(),
+      );
+      return null;
+    } on AuthException catch (e) {
+      return 'Error: ${e.message}';
+    } catch (e) {
+      return 'Error de conexión: $e';
+    }
+  }
+
+  Future<String?> verificarOtp({
+    required String correo,
+    required String token,
+  }) async {
+    try {
+      await _supabase.auth.verifyOTP(
+        email: correo.trim().toLowerCase(),
+        token: token,
+        type: OtpType.email,
+      );
+      return null;
+    } on AuthException {
+      return 'Código inválido o expirado.';
     } catch (e) {
       return 'Error de conexión: $e';
     }
