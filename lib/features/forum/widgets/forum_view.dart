@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:async';
+
 import '../../../core/cache/app_cache_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/social_tag_utils.dart';
 import '../../../core/widgets/cuc_app_bar.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../../repository/providers/repository_providers.dart';
-import '../../social/social_providers.dart';
+import '../providers/forum_providers.dart';
 
 import '../../../core/widgets/correct_snackbar.dart';
 import '../../../core/widgets/rich_text_editor_toolbar.dart';
 import '../../explore/widgets/news_tag.dart';
-
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:url_launcher/url_launcher.dart';
 part 'forum_filters_bar.dart';
 part 'forum_replies.dart';
 part 'forum_thread_card.dart';
@@ -35,7 +39,7 @@ class ForumView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threadsAsync = ref.watch(forumThreadsProvider);
-    final profileAsync = ref.watch(currentSocialProfileProvider);
+    final profileAsync = ref.watch(currentUserProfileProvider);
 
     return Scaffold(
       appBar: const CucAppBar(),
@@ -85,7 +89,7 @@ class ForumView extends ConsumerWidget {
         ),
       ),
       floatingActionButton: profileAsync.maybeWhen(
-        data: (profile) => profile?.isActive == true
+        data: (profile) => profile?.estado == 'activo'
             ? FloatingActionButton(
                 onPressed: () => _openThreadSheet(context),
                 backgroundColor: AppColors.primary,

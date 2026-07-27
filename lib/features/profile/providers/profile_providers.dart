@@ -180,3 +180,13 @@ final recentPostsProvider = FutureProvider.family<List<Map<String, dynamic>>, St
       .order('fecha_creacion', ascending: false)
       .limit(3); // Candado de seguridad para no desbordar la UI
 });
+// 6. Provider del Usuario Actual (Puente para la UI)
+final currentUserProfileProvider = FutureProvider.autoDispose<UserProfile?>((ref) async {
+  final supabase = ref.read(supabaseClientProvider);
+  final user = supabase.auth.currentUser;
+
+  if (user == null) return null;
+
+  // Consumimos la única fuente de la verdad
+  return await ref.watch(profileProvider(user.id).future);
+});

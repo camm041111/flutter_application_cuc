@@ -83,7 +83,7 @@ class _ForumRepliesSection extends StatelessWidget {
   }
 }
 
-class _ReplyTile extends ConsumerWidget {
+class _ReplyTile extends ConsumerStatefulWidget {
   const _ReplyTile({
     required this.reply,
     required this.depth,
@@ -101,15 +101,80 @@ class _ReplyTile extends ConsumerWidget {
   final VoidCallback? onReply;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ReplyTile> createState() => _ReplyTileState();
+}
+
+class _ReplyTileState extends ConsumerState<_ReplyTile> {
+  // 🧠 MICRO-ESTADO: Controlamos los votos en la memoria RAM del Widget
+  late int _localUpVotes;
+  late int _localDownVotes;
+  bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncWithProvider();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ReplyTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reply.id != widget.reply.id ||
+        oldWidget.reply.upVotes != widget.reply.upVotes ||
+        oldWidget.reply.downVotes != widget.reply.downVotes) {
+      _syncWithProvider();
+    }
+  }
+
+  void _syncWithProvider() {
+    _localUpVotes = widget.reply.upVotes;
+    _localDownVotes = widget.reply.downVotes;
+  }
+
+  Future<void> _handleVote({required bool up}) async {
+    if (_isProcessing) return;
+
+    // 1. Mutación Optimista: UI instantánea
+    setState(() {
+      _isProcessing = true;
+      if (up) {
+        _localUpVotes++;
+      } else {
+        _localDownVotes++;
+      }
+    });
+
+    // 2. Ejecución asíncrona en Supabase
+    final success = await ref.read(forumActionsProvider).voteReply(widget.reply, up: up);
+
+    if (mounted) {
+      // 3. Rollback en caso de fallo de red (Fail-Safe)
+      if (!success) {
+        setState(() {
+          if (up) {
+            _localUpVotes--;
+          } else {
+            _localDownVotes--;
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Fallo de conexión al servidor.')),
+        );
+      }
+      setState(() => _isProcessing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.only(left: depth * 18.0, bottom: 8),
+      margin: EdgeInsets.only(left: widget.depth * 18.0, bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surface, // Asumiendo tu gris oscuro de fondo (no negro puro)
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-            color: depth == 0
+            color: widget.depth == 0
                 ? AppColors.border
                 : AppColors.primary.withValues(alpha: 0.35)),
       ),
@@ -119,8 +184,8 @@ class _ReplyTile extends ConsumerWidget {
           Row(
             children: [
               ForumUserAvatar(
-                name: reply.authorName,
-                imageUrl: reply.authorAvatarUrl,
+                name: widget.reply.authorName,
+                imageUrl: widget.reply.authorAvatarUrl,
                 size: 32,
               ),
               const SizedBox(width: 9),
@@ -128,11 +193,11 @@ class _ReplyTile extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(reply.authorName,
+                    Text(widget.reply.authorName,
                         style: const TextStyle(
                             fontSize: 12, fontWeight: FontWeight.w700),
                         overflow: TextOverflow.ellipsis),
-                    Text(reply.authorMeta,
+                    Text(widget.reply.authorMeta,
                         style: const TextStyle(
                             fontSize: 10, color: AppColors.muted),
                         overflow: TextOverflow.ellipsis),
@@ -142,7 +207,7 @@ class _ReplyTile extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(reply.content,
+          Text(widget.reply.content,
               style: const TextStyle(fontSize: 13, height: 1.45)),
           const SizedBox(height: 8),
           Row(
@@ -150,21 +215,19 @@ class _ReplyTile extends ConsumerWidget {
               _CompactReplyAction(
                 icon: Icons.thumb_up_alt_outlined,
                 tooltip: 'Me gusta',
-                count: reply.upVotes,
-                onPressed: () =>
-                    ref.read(socialActionsProvider).voteReply(reply, up: true),
+                count: _localUpVotes,
+                onPressed: () => _handleVote(up: true),
               ),
               _CompactReplyAction(
                 icon: Icons.thumb_down_alt_outlined,
                 tooltip: 'No me gusta',
-                count: reply.downVotes,
+                count: _localDownVotes,
                 muted: true,
-                onPressed: () =>
-                    ref.read(socialActionsProvider).voteReply(reply, up: false),
+                onPressed: () => _handleVote(up: false),
               ),
-              if (onReply != null)
+              if (widget.onReply != null)
                 TextButton.icon(
-                  onPressed: onReply,
+                  onPressed: widget.onReply,
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -179,22 +242,22 @@ class _ReplyTile extends ConsumerWidget {
                 ),
             ],
           ),
-          if (childCount > 0) ...[
+          if (widget.childCount > 0) ...[
             const SizedBox(height: 2),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
-                onPressed: onToggleChildren,
+                onPressed: widget.onToggleChildren,
                 icon: Icon(
-                  childrenExpanded ? Icons.expand_less : Icons.expand_more,
+                  widget.childrenExpanded ? Icons.expand_less : Icons.expand_more,
                   size: 18,
                 ),
                 label: Text(
-                  childrenExpanded
+                  widget.childrenExpanded
                       ? 'Ocultar comentarios'
-                      : childCount == 1
-                          ? 'Ver 1 comentario'
-                          : 'Ver $childCount comentarios',
+                      : widget.childCount == 1
+                      ? 'Ver 1 comentario'
+                      : 'Ver ${widget.childCount} comentarios',
                 ),
               ),
             ),

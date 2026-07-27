@@ -1,4 +1,4 @@
-part of 'forum_view.dart';
+﻿part of 'forum_view.dart';
 
 class _ThreadComposerSheet extends ConsumerStatefulWidget {
   const _ThreadComposerSheet();
@@ -62,7 +62,7 @@ class _ThreadComposerSheetState extends ConsumerState<_ThreadComposerSheet> {
     if (_tagCtrl.text.trim().isNotEmpty && !_addTags(_tagCtrl.text)) return;
     setState(() => _saving = true);
     try {
-      await ref.read(socialActionsProvider).createThread(
+      await ref.read(forumActionsProvider).createThread(
             ForumThreadInput(
               title: _titleCtrl.text,
               content: _contentCtrl.text,

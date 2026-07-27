@@ -30,11 +30,12 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
     if (text.isEmpty || _saving) return;
     setState(() => _saving = true);
     try {
-      await ref.read(socialActionsProvider).createReply(
-            threadId: widget.thread.id,
-            content: text,
-            parentReplyId: _parentReplyId,
-          );
+      // 🛡️ ARQUITECTURA: Delegamos la transacción al Action unificado del Foro
+      await ref.read(forumActionsProvider).createReply(
+        threadId: widget.thread.id,
+        content: text,
+        parentReplyId: _parentReplyId,
+      );
       _replyCtrl.clear();
       setState(() {
         if (_parentReplyId != null) {
@@ -57,7 +58,8 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final repliesAsync = ref.watch(forumRepliesProvider(widget.thread.id));
-    final profileAsync = ref.watch(currentSocialProfileProvider);
+    // 🛡️ ARQUITECTURA: Consumimos el puente de sesión hacia la Verdadera Identidad
+    final profileAsync = ref.watch(currentUserProfileProvider);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
@@ -107,10 +109,52 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        widget.thread.content,
-                        style: const TextStyle(height: 1.5),
+
+                      // 🛡️ ARQUITECTURA: Motor de Markdown para parsear el contenido rico de Supabase
+                      MarkdownBody(
+                        data: widget.thread.content,
+                        selectable: true,
+                        onTapLink: (text, href, title) async {
+                          if (href != null) {
+                            final url = Uri.parse(href);
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                            }
+                          }
+                        },
+                        styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(
+                            fontSize: 14,
+                            height: 1.6,
+                            color: AppColors.onSurface,
+                          ),
+                          a: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w700,
+                            decoration: TextDecoration.underline,
+                          ),
+                          strong: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface,
+                          ),
+                          em: const TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.muted,
+                          ),
+                          code: const TextStyle(
+                            backgroundColor: AppColors.background,
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            color: AppColors.primary,
+                          ),
+                          codeblockDecoration: BoxDecoration(
+                            color: AppColors.background,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                        ),
                       ),
+
                       const SizedBox(height: 16),
                       const Text(
                         'Respuestas',
@@ -135,7 +179,7 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
                             return const Padding(
                               padding: EdgeInsets.symmetric(vertical: 16),
                               child: Text(
-                                'Se el primero en responder.',
+                                'Sé el primero en responder.',
                                 style: TextStyle(color: AppColors.muted),
                               ),
                             );
@@ -201,7 +245,8 @@ class _ReplyComposerBar extends StatelessWidget {
     required this.onSubmit,
   });
 
-  final AsyncValue<SocialProfile?> profileAsync;
+  // 🛡️ ARQUITECTURA: Se asegura un tipado estricto hacia la clase oficial UserProfile
+  final AsyncValue<UserProfile?> profileAsync;
   final TextEditingController controller;
   final FocusNode focusNode;
   final String? parentReplyAuthor;
@@ -222,9 +267,10 @@ class _ReplyComposerBar extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
           child: profileAsync.maybeWhen(
             data: (profile) {
-              if (profile?.isActive != true) {
+              // 🛡️ ARQUITECTURA: Zero Trust UI. Validación estricta usando el estado de UserProfile
+              if (profile?.estado != 'activo') {
                 return const Text(
-                  'Tu perfil esta en modo solo lectura.',
+                  'Tu perfil está en modo solo lectura.',
                   style: TextStyle(color: AppColors.muted),
                 );
               }
@@ -266,13 +312,13 @@ class _ReplyComposerBar extends StatelessWidget {
                         onPressed: saving ? null : onSubmit,
                         icon: saving
                             ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppColors.background,
-                                ),
-                              )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.background,
+                          ),
+                        )
                             : const Icon(Icons.send_rounded, size: 18),
                       ),
                     ],
