@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/cache/app_cache_service.dart';
-import '../../../core/constants/areas.dart';
 import '../../../core/providers/supabase_provider.dart';
 
 const repositoryFileLimitBytes = 10 * 1024 * 1024;
@@ -13,6 +12,17 @@ const repositoryCategoryOptions = {
   'manuales': 'Manuales',
   'actas': 'Actas',
   'divulgacion': 'Divulgación',
+};
+
+const repositoryAreaOptions = {
+  'Ingeniería y Tecnología': 'Ingeniería y Tecnología',
+  'Ciencias de la Salud': 'Ciencias de la Salud',
+  'Ciencias Agropecuarias': 'Ciencias Agropecuarias',
+  'Ciencias Sociales y Humanidades': 'Ciencias Sociales y Humanidades',
+  'Ciencias Naturales y Exactas': 'Ciencias Naturales y Exactas',
+  'Ciencias Económico Administrativas':
+      'Ciencias Económico Administrativas',
+  'Educación y Artes': 'Educación y Artes',
 };
 
 class RepositoryFilters {
@@ -442,9 +452,9 @@ class RepositoryActions {
       'categoria': repositoryCategoryOptions.containsKey(input.category)
           ? input.category
           : repositoryCategoryOptions.keys.first,
-      'area_conocimiento': areaOptions.containsKey(input.area)
+      'area_conocimiento': repositoryAreaOptions.containsKey(input.area)
           ? input.area
-          : areaOptions.keys.first,
+          : repositoryAreaOptions.keys.first,
       'etiquetas': input.tags.take(4).toList(),
       'urls_archivos': [url],
       'id_autor': user.id,

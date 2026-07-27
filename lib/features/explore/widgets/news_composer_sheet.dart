@@ -122,8 +122,7 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    await HapticFeedback.lightImpact();
-    if (!mounted) return;
+    unawaited(HapticFeedback.lightImpact());
 
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
