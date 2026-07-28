@@ -4,14 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../providers/repository_providers.dart';
-import 'repository_filter_sheet.dart';
 
 class RepositoryDetailSheet extends ConsumerStatefulWidget {
-  const RepositoryDetailSheet({
-    super.key,
-    required this.document,
-  });
-
+  const RepositoryDetailSheet({super.key, required this.document});
   final RepositoryDocument document;
 
   @override
@@ -23,48 +18,38 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
   bool _reviewing = false;
 
   Future<void> _review(bool isApproved) async {
-    if (_reviewing) {
-      return;
-    }
-
+    if (_reviewing) return;
     setState(() => _reviewing = true);
     try {
       await ref
           .read(repositoryActionsProvider)
           .reviewDocument(widget.document.id, isApproved);
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
       Navigator.pop(context);
     } catch (error) {
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo revisar el documento: $error')),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error: $error')));
     } finally {
-      if (mounted) {
-        setState(() => _reviewing = false);
-      }
+      if (mounted) setState(() => _reviewing = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentUserProfileProvider);
-    final document = widget.document;
+    final doc = widget.document;
     final canReview = profileAsync.maybeWhen(
       data: (profile) =>
-          document.status.toLowerCase() == 'pendiente' &&
+          doc.status.toLowerCase() == 'pendiente' &&
           profile != null &&
           (profile.rol == 'coordinador' || profile.rol == 'lider') &&
-          profile.clubId == document.clubId,
+          profile.clubId == doc.clubId,
       orElse: () => false,
     );
 
     return DraggableScrollableSheet(
-      initialChildSize: 0.82,
+      initialChildSize: 0.85,
       minChildSize: 0.5,
       maxChildSize: 0.95,
       builder: (context, scrollController) {
@@ -78,97 +63,144 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  padding: const EdgeInsets.only(bottom: 24),
                   children: [
-                    Align(
-                      alignment: Alignment.center,
+                    // Header handle
+                    Center(
                       child: Container(
+                        margin: const EdgeInsets.only(top: 12, bottom: 16),
                         width: 40,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: AppColors.border,
-                          borderRadius: BorderRadius.circular(99),
+                            color: AppColors.border,
+                            borderRadius: BorderRadius.circular(99)),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              doc.title,
+                              style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.onSurface,
+                                  height: 1.2,
+                                  letterSpacing: -0.5),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (doc.status.toLowerCase() != 'aprobado')
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: _DetailStatusBadge(status: doc.status),
                         ),
+                      ),
+
+                    const SizedBox(height: 24),
+
+                    // 🛡️ FICHA BIBLIOGRÁFICA (Grid de Metadatos Científicos)
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: AppColors.border.withValues(alpha: 0.4)),
+                      ),
+                      child: Column(
+                        children: [
+                          _DataRow(label: 'AUTOR', value: doc.authorName),
+                          const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child:
+                                  Divider(height: 1, color: AppColors.border)),
+                          _DataRow(label: 'CLUB ASOCIADO', value: doc.clubName),
+                          const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child:
+                                  Divider(height: 1, color: AppColors.border)),
+                          Row(
+                            children: [
+                              Expanded(
+                                  child: _DataRow(
+                                      label: 'FECHA',
+                                      value: formatRepositoryDetailDate(
+                                          doc.createdAt),
+                                      isVertical: true)),
+                              Expanded(
+                                  child: _DataRow(
+                                      label: 'CATEGORÍA',
+                                      value: repositoryCategoryOptions[
+                                              doc.category] ??
+                                          doc.category,
+                                      isVertical: true)),
+                            ],
+                          ),
+                          if (doc.area.isNotEmpty) ...[
+                            const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: Divider(
+                                    height: 1, color: AppColors.border)),
+                            _DataRow(
+                                label: 'ÁREA DE CONOCIMIENTO',
+                                value: repositoryAreaOptions[doc.area] ??
+                                    doc.area),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'RESUMEN / ABSTRACT',
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.2,
+                            color: AppColors.primary),
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            document.title,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.onSurface,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                    if (document.status.toLowerCase() != 'aprobado') ...[
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: RepositoryDocumentStatusBadge(
-                          status: document.status,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    RepositoryDetailField(
-                      label: 'AUTOR',
-                      value: document.authorName,
-                    ),
-                    RepositoryDetailField(
-                      label: 'CLUB',
-                      value: document.clubName,
-                    ),
-                    RepositoryDetailField(
-                      label: 'FECHA',
-                      value: formatRepositoryDate(document.createdAt),
-                    ),
-                    RepositoryDetailField(
-                      label: 'CATEGORÍA',
-                      value: repositoryCategoryOptions[document.category] ??
-                          document.category,
-                    ),
-                    if (document.area.isNotEmpty)
-                      RepositoryDetailField(
-                        label: 'ÁREA DE CONOCIMIENTO',
-                        value: repositoryAreaOptions[document.area] ??
-                            document.area,
-                      ),
-                    const SizedBox(height: 6),
-                    const RepositoryFilterLabel(label: 'DESCRIPCIÓN'),
-                    const SizedBox(height: 8),
-                    Text(
-                      document.description.isEmpty
-                          ? 'Sin descripción.'
-                          : document.description,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        height: 1.5,
-                        color: AppColors.onSurface,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        doc.description.isEmpty
+                            ? 'Este documento no incluye una descripción general.'
+                            : doc.description,
+                        style: const TextStyle(
+                            fontSize: 14.5,
+                            height: 1.6,
+                            color: AppColors.onSurface),
                       ),
                     ),
-                    if (document.tags.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      const RepositoryFilterLabel(label: 'ETIQUETAS'),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: document.tags
-                            .map(
-                              (tag) => RepositoryDocumentTag(label: tag),
-                            )
-                            .toList(),
+                    if (doc.tags.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: doc.tags
+                              .map((tag) => _DetailTag(label: tag))
+                              .toList(),
+                        ),
                       ),
                     ],
                   ],
@@ -178,12 +210,10 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                 SafeArea(
                   top: false,
                   child: Container(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                     decoration: const BoxDecoration(
                       color: AppColors.surface,
-                      border: Border(
-                        top: BorderSide(color: AppColors.border),
-                      ),
+                      border: Border(top: BorderSide(color: AppColors.border)),
                     ),
                     child: Row(
                       children: [
@@ -193,8 +223,12 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.error,
                               side: const BorderSide(color: AppColors.error),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
-                            child: const Text('RECHAZAR'),
+                            child: const Text('RECHAZAR',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5)),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -204,17 +238,19 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: AppColors.background,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
                             child: _reviewing
                                 ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
+                                    width: 20,
+                                    height: 20,
                                     child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: AppColors.background,
-                                    ),
-                                  )
-                                : const Text('APROBAR'),
+                                        strokeWidth: 2.5,
+                                        color: AppColors.background))
+                                : const Text('APROBAR PUBLICACIÓN',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.5)),
                           ),
                         ),
                       ],
@@ -229,93 +265,110 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
   }
 }
 
-class RepositoryDetailField extends StatelessWidget {
-  const RepositoryDetailField({
-    super.key,
-    required this.label,
-    required this.value,
-  });
-
+class _DataRow extends StatelessWidget {
+  const _DataRow(
+      {required this.label, required this.value, this.isVertical = false});
   final String label;
   final String value;
+  final bool isVertical;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Column(
+    if (isVertical) {
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          RepositoryFilterLabel(label: label),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                  color: AppColors.muted)),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.onSurface,
-            ),
-          ),
+          Text(value,
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.onSurface,
+                  fontWeight: FontWeight.w500)),
         ],
-      ),
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 110,
+          child: Text(label,
+              style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                  color: AppColors.muted)),
+        ),
+        Expanded(
+          child: Text(value,
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.onSurface,
+                  fontWeight: FontWeight.w500)),
+        ),
+      ],
     );
   }
 }
 
-class RepositoryDocumentStatusBadge extends StatelessWidget {
-  const RepositoryDocumentStatusBadge({
-    super.key,
-    required this.status,
-  });
-
+class _DetailStatusBadge extends StatelessWidget {
+  const _DetailStatusBadge({required this.status});
   final String status;
 
   @override
   Widget build(BuildContext context) {
-    final normalized = status.toLowerCase();
-    final isRejected = normalized == 'rechazado';
+    final isRejected = status.toLowerCase() == 'rechazado';
     final color = isRejected ? AppColors.error : AppColors.primary;
-    final label = isRejected ? 'Rechazado' : 'Pendiente';
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.45)),
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
       ),
       child: Text(
-        label,
+        isRejected ? 'RECHAZADO' : 'EN REVISIÓN',
         style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-        ),
+            color: color,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.0),
       ),
     );
   }
 }
 
-class RepositoryDocumentTag extends StatelessWidget {
-  const RepositoryDocumentTag({
-    super.key,
-    required this.label,
-  });
-
+class _DetailTag extends StatelessWidget {
+  const _DetailTag({required this.label});
   final String label;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(999),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: AppColors.border),
       ),
       child: Text(
         label.startsWith('#') ? label : '#$label',
-        style: const TextStyle(fontSize: 10, color: AppColors.muted),
+        style: const TextStyle(
+            fontSize: 12,
+            color: AppColors.onSurface,
+            fontWeight: FontWeight.w600),
       ),
     );
   }
+}
+
+String formatRepositoryDetailDate(DateTime date) {
+  return '${date.day.toString().padLeft(2, '0')}/'
+      '${date.month.toString().padLeft(2, '0')}/${date.year}';
 }

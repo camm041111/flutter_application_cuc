@@ -198,6 +198,9 @@ class RepositoryFilterSheetState extends ConsumerState<RepositoryFilterSheet> {
                         onPressed: _apply,
                         icon: const Icon(Icons.check, size: 18),
                         label: const Text('APLICAR FILTROS'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
                       ),
                     ),
                   ],
@@ -251,11 +254,11 @@ class RepositoryFilterField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RepositoryFilterLabel(label: label),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         TextField(
           controller: controller,
           style: const TextStyle(fontSize: 13),
-          decoration: InputDecoration(hintText: hint),
+          decoration: repositoryInputDecoration(hintText: hint),
         ),
       ],
     );
@@ -284,12 +287,12 @@ class RepositoryFilterDropdown extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RepositoryFilterLabel(label: label),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           initialValue: currentValue,
-          dropdownColor: AppColors.surface,
+          dropdownColor: AppColors.background,
           style: const TextStyle(color: AppColors.onSurface, fontSize: 13),
-          decoration: const InputDecoration(),
+          decoration: repositoryInputDecoration(),
           items: options.entries
               .map(
                 (entry) => DropdownMenuItem(
@@ -303,6 +306,26 @@ class RepositoryFilterDropdown extends StatelessWidget {
       ],
     );
   }
+}
+
+InputDecoration repositoryInputDecoration({
+  String? hintText,
+  String? counterText,
+}) {
+  const border = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+    borderSide: BorderSide.none,
+  );
+
+  return InputDecoration(
+    hintText: hintText,
+    counterText: counterText,
+    filled: true,
+    fillColor: AppColors.background,
+    border: border,
+    enabledBorder: border,
+    focusedBorder: border,
+  );
 }
 
 String formatRepositoryDate(DateTime date) {

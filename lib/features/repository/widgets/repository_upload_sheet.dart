@@ -133,17 +133,27 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 16),
+              const RepositoryFilterLabel(
+                label: 'TÍTULO DEL DOCUMENTO',
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _titleController,
-                decoration: const InputDecoration(hintText: 'Título'),
+                decoration: repositoryInputDecoration(
+                  hintText: 'Título',
+                ),
               ),
               const SizedBox(height: 12),
+              const RepositoryFilterLabel(
+                label: 'DESCRIPCIÓN BREVE',
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _descriptionController,
                 minLines: 2,
                 maxLines: 4,
                 maxLength: 250,
-                decoration: const InputDecoration(
+                decoration: repositoryInputDecoration(
                   hintText: 'Descripción breve',
                   counterText: '',
                 ),
@@ -160,9 +170,13 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 },
               ),
               const SizedBox(height: 12),
+              const RepositoryFilterLabel(
+                label: 'ETIQUETAS',
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _tagsController,
-                decoration: const InputDecoration(
+                decoration: repositoryInputDecoration(
                   hintText: 'Etiquetas separadas por coma (máx. 4)',
                 ),
               ),
@@ -192,6 +206,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: _uploading ? null : _submit,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                   icon: _uploading
                       ? const SizedBox(
                           width: 16,
