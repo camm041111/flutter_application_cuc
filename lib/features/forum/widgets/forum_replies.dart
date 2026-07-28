@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../providers/forum_providers.dart';
-import 'forum_user_avatar.dart';
+import 'forum_user_avatar.dart' as forum_widgets;
 
 const _rootReplyKey = '__root__';
 
@@ -18,6 +18,7 @@ Map<String, List<ForumReply>> _childrenByParentId(List<ForumReply> replies) {
 
 class ForumRepliesSection extends StatelessWidget {
   const ForumRepliesSection({
+    super.key,
     required this.replies,
     required this.expandedReplyIds,
     required this.showAllReplies,
@@ -147,19 +148,30 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
   }
 
   Future<void> _handleVote({required bool up}) async {
-    if (_isProcessing) return;
+    if (_isProcessing) {
+      return;
+    }
 
     setState(() {
       _isProcessing = true;
-      if (up) _localUpVotes++; else _localDownVotes++;
+      if (up) {
+        _localUpVotes++;
+      } else {
+        _localDownVotes++;
+      }
     });
 
-    final success = await ref.read(forumActionsProvider).voteReply(widget.reply, up: up);
+    final success =
+        await ref.read(forumActionsProvider).voteReply(widget.reply, up: up);
 
     if (mounted) {
       if (!success) {
         setState(() {
-          if (up) _localUpVotes--; else _localDownVotes--;
+          if (up) {
+            _localUpVotes--;
+          } else {
+            _localDownVotes--;
+          }
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Fallo de conexión al servidor.')),
@@ -197,7 +209,7 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
         children: [
           Row(
             children: [
-              ForumUserAvatar(
+              forum_widgets.ForumUserAvatar(
                 name: widget.reply.authorName,
                 imageUrl: widget.reply.authorAvatarUrl,
                 size: 28, // Reducido para mayor elegancia
