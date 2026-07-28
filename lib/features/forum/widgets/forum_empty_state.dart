@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ForumEmptyState extends StatelessWidget {
-  const ForumEmptyState({required this.title, required this.subtitle});
+  const ForumEmptyState({
+    super.key,
+    required this.title,
+    required this.subtitle,
+  });
   final String title;
   final String subtitle;
 
@@ -38,4 +42,3 @@ class ForumEmptyState extends StatelessWidget {
     );
   }
 }
-

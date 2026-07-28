@@ -3,23 +3,25 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/dashboard_search_field.dart';
 import '../../repository/providers/repository_providers.dart';
 import '../providers/forum_providers.dart';
+
 class ForumFiltersBar extends ConsumerStatefulWidget {
-  ForumFiltersBar({super.key});
+  const ForumFiltersBar({super.key});
 
   @override
-  ConsumerState<ForumFiltersBar> createState() => _ForumFiltersBarState();
+  ConsumerState<ForumFiltersBar> createState() => ForumFiltersBarState();
 }
 
-class _ForumFiltersBarState extends ConsumerState<ForumFiltersBar> {
+class ForumFiltersBarState extends ConsumerState<ForumFiltersBar> {
   Timer? _debounce;
-  late TextEditingController _searchController;
+  late final TextEditingController _searchController;
 
   @override
   void initState() {
     super.initState();
-    // 🛡️ Inicializamos con el valor existente por si el widget se reconstruye
     _searchController = TextEditingController(
       text: ref.read(forumFiltersProvider).search,
     );
@@ -33,9 +35,10 @@ class _ForumFiltersBarState extends ConsumerState<ForumFiltersBar> {
   }
 
   void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    if (_debounce?.isActive ?? false) {
+      _debounce!.cancel();
+    }
 
-    // 🛡️ BARRERA ARQUITECTÓNICA: Retenemos la petición 500ms
     _debounce = Timer(const Duration(milliseconds: 500), () {
       ref.read(forumFiltersProvider.notifier).setSearch(query);
     });
@@ -49,54 +52,57 @@ class _ForumFiltersBarState extends ConsumerState<ForumFiltersBar> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          TextField(
+          DashboardSearchField(
             controller: _searchController,
-            decoration: const InputDecoration(
-              hintText: 'Buscar hilos, etiquetas o contenido...',
-              prefixIcon: Icon(Icons.search),
-              // Sostenemos la estética minimalista, asegurando que los inputs no sean ruidosos visualmente
-            ),
+            hintText: 'Buscar hilos, etiquetas o contenido...',
             onChanged: _onSearchChanged,
           ),
           const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<String>(
-                  initialValue: filters.area,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
+                child: ForumDropdownFilter<String>(
+                  icon: Icons.science_outlined,
+                  value: filters.area,
                   items: [
                     const DropdownMenuItem(
                       value: '',
-                      child: Text('Todas las áreas', overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        'Todas las áreas',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     ...repositoryAreaOptions.entries.map(
-                          (entry) => DropdownMenuItem(
+                      (entry) => DropdownMenuItem(
                         value: entry.key,
-                        child: Text(entry.value, overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          entry.value,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
                   ],
-                  onChanged: (value) => ref.read(forumFiltersProvider.notifier).setArea(value ?? ''),
+                  onChanged: (value) => ref
+                      .read(forumFiltersProvider.notifier)
+                      .setArea(value ?? ''),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: DropdownButtonFormField<ForumSort>(
-                  initialValue: filters.sort,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  items: ForumSort.values.map(
+                child: ForumDropdownFilter<ForumSort>(
+                  icon: Icons.update,
+                  value: filters.sort,
+                  items: ForumSort.values
+                      .map(
                         (sort) => DropdownMenuItem(
-                      value: sort,
-                      child: Text(sort.label, overflow: TextOverflow.ellipsis),
-                    ),
-                  ).toList(),
+                          value: sort,
+                          child: Text(
+                            sort.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
                   onChanged: (value) {
                     if (value != null) {
                       ref.read(forumFiltersProvider.notifier).setSort(value);
@@ -105,6 +111,60 @@ class _ForumFiltersBarState extends ConsumerState<ForumFiltersBar> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ForumDropdownFilter<T> extends StatelessWidget {
+  const ForumDropdownFilter({
+    super.key,
+    required this.icon,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 17, color: AppColors.primary),
+          const SizedBox(width: 6),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                isExpanded: true,
+                dropdownColor: AppColors.surface,
+                icon: const Icon(
+                  Icons.arrow_drop_down,
+                  color: AppColors.muted,
+                ),
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                items: items,
+                onChanged: onChanged,
+              ),
+            ),
           ),
         ],
       ),

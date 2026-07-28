@@ -91,9 +91,13 @@ class RepositoryFilterSheetState extends ConsumerState<RepositoryFilterSheet> {
                 child: Row(
                   children: [
                     const Text(
-                      'Filtros avanzados',
-                      style:
-                          TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      'FILTROS AVANZADOS',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                        color: AppColors.primary,
+                      ),
                     ),
                     const Spacer(),
                     IconButton(
@@ -230,7 +234,7 @@ class RepositoryFilterLabel extends StatelessWidget {
         fontSize: 10,
         fontWeight: FontWeight.w700,
         letterSpacing: 1.2,
-        color: AppColors.primary,
+        color: AppColors.muted,
       ),
     );
   }
@@ -311,6 +315,10 @@ class RepositoryFilterDropdown extends StatelessWidget {
 InputDecoration repositoryInputDecoration({
   String? hintText,
   String? counterText,
+  String? helperText,
+  String? errorText,
+  Widget? prefixIcon,
+  Widget? suffixIcon,
 }) {
   const border = OutlineInputBorder(
     borderRadius: BorderRadius.all(Radius.circular(8)),
@@ -320,6 +328,10 @@ InputDecoration repositoryInputDecoration({
   return InputDecoration(
     hintText: hintText,
     counterText: counterText,
+    helperText: helperText,
+    errorText: errorText,
+    prefixIcon: prefixIcon,
+    suffixIcon: suffixIcon,
     filled: true,
     fillColor: AppColors.background,
     border: border,

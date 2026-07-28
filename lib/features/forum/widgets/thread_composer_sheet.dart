@@ -117,25 +117,33 @@ class _ThreadComposerSheetState extends ConsumerState<ThreadComposerSheet> {
                 const Text(
                   'NUEVO HILO',
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: 1,
                     color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 20),
+                const ForumComposerLabel(label: 'TÍTULO DEL HILO'),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: _titleCtrl,
-                  decoration:
-                      const InputDecoration(hintText: 'Titulo de la duda'),
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: forumComposerInputDecoration(
+                    hintText: 'Título de la duda',
+                  ),
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'Ingresa un titulo'
                       : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                const ForumComposerLabel(label: 'ÁREA DE CONOCIMIENTO'),
+                const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: _area,
                   isExpanded: true,
+                  dropdownColor: AppColors.background,
+                  decoration: forumComposerInputDecoration(),
                   items: repositoryAreaOptions.entries
                       .map(
                         (entry) => DropdownMenuItem(
@@ -147,7 +155,9 @@ class _ThreadComposerSheetState extends ConsumerState<ThreadComposerSheet> {
                       .toList(),
                   onChanged: (value) => setState(() => _area = value ?? _area),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                const ForumComposerLabel(label: 'CONTENIDO'),
+                const SizedBox(height: 8),
                 RichTextEditorToolbar(
                   controller: _contentCtrl,
                   enabled: !_saving,
@@ -157,33 +167,41 @@ class _ThreadComposerSheetState extends ConsumerState<ThreadComposerSheet> {
                   minLines: 8,
                   maxLines: 12,
                   maxLength: 1000,
-                  decoration: const InputDecoration(
-                      hintText: 'Describe el problema o hallazgo'),
+                  decoration: forumComposerInputDecoration(
+                    hintText: 'Describe el problema o hallazgo',
+                  ),
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'Ingresa el contenido'
                       : null,
                 ),
-                Wrap(
-                  spacing: 6,
-                  children: [
-                    ..._tags.map(
-                      (tag) => InputChip(
-                        label: Text(tag),
-                        onDeleted: _saving
-                            ? null
-                            : () => setState(() {
-                                  _tags.remove(tag);
-                                  _tagError = null;
-                                }),
-                      ),
-                    ),
-                  ],
-                ),
+                const SizedBox(height: 8),
+                const ForumComposerLabel(label: 'ETIQUETAS (OPCIONAL)'),
+                const SizedBox(height: 8),
+                if (_tags.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _tags
+                        .map(
+                          (tag) => InputChip(
+                            label: Text(tag),
+                            onDeleted: _saving
+                                ? null
+                                : () => setState(() {
+                                      _tags.remove(tag);
+                                      _tagError = null;
+                                    }),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 TextField(
                   controller: _tagCtrl,
                   enabled: !_saving && _tags.length < maxSocialTags,
                   maxLength: maxSocialTagLength,
-                  decoration: InputDecoration(
+                  decoration: forumComposerInputDecoration(
                     hintText: 'Agregar etiqueta (opcional)',
                     errorText: _tagError,
                     prefixIcon: const Icon(Icons.tag),
@@ -203,12 +221,35 @@ class _ThreadComposerSheetState extends ConsumerState<ThreadComposerSheet> {
                   onSubmitted: _addTags,
                 ),
                 if (_inlineError != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    _inlineError!,
-                    style: const TextStyle(
-                      color: AppColors.error,
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.error.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: AppColors.error,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _inlineError!,
+                            style: const TextStyle(
+                              color: AppColors.error,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -217,6 +258,9 @@ class _ThreadComposerSheetState extends ConsumerState<ThreadComposerSheet> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: _saving ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
                     icon: _saving
                         ? const SizedBox(
                             width: 16,
@@ -233,4 +277,52 @@ class _ThreadComposerSheetState extends ConsumerState<ThreadComposerSheet> {
       ),
     );
   }
+}
+
+class ForumComposerLabel extends StatelessWidget {
+  const ForumComposerLabel({
+    super.key,
+    required this.label,
+  });
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: const TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 1.2,
+        color: AppColors.muted,
+      ),
+    );
+  }
+}
+
+InputDecoration forumComposerInputDecoration({
+  String? hintText,
+  String? helperText,
+  String? errorText,
+  Widget? prefixIcon,
+  Widget? suffixIcon,
+}) {
+  const border = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(8)),
+    borderSide: BorderSide.none,
+  );
+
+  return InputDecoration(
+    hintText: hintText,
+    helperText: helperText,
+    errorText: errorText,
+    prefixIcon: prefixIcon,
+    suffixIcon: suffixIcon,
+    filled: true,
+    fillColor: AppColors.background,
+    border: border,
+    enabledBorder: border,
+    focusedBorder: border,
+  );
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/dashboard_search_field.dart';
 import '../providers/repository_providers.dart';
 
 class RepositorySearchBar extends ConsumerStatefulWidget {
@@ -44,13 +45,10 @@ class RepositorySearchBarState extends ConsumerState<RepositorySearchBar> {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
+    return DashboardSearchField(
       controller: _controller,
+      hintText: 'Buscar investigaciones...',
       onChanged: _onSearchChanged,
-      decoration: const InputDecoration(
-        hintText: 'Buscar investigaciones...',
-        prefixIcon: Icon(Icons.search),
-      ),
     );
   }
 }

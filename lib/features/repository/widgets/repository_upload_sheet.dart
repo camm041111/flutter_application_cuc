@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/social_tag_utils.dart';
+import '../../../core/widgets/rich_text_editor_toolbar.dart';
 import '../providers/repository_providers.dart';
 import 'repository_filter_sheet.dart';
 
@@ -18,10 +20,12 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _tagsController = TextEditingController();
+  final _tags = <String>[];
   String _category = repositoryCategoryOptions.keys.first;
   String _area = repositoryAreaOptions.keys.first;
   PlatformFile? _file;
   bool _uploading = false;
+  String? _tagError;
 
   @override
   void dispose() {
@@ -63,12 +67,54 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
     setState(() => _file = file);
   }
 
+  bool _addTags(String rawValue) {
+    var error = '';
+    var addedAny = false;
+
+    for (final value in rawValue.split(',')) {
+      final tag = normalizeSocialTag(value);
+      if (tag.isEmpty) continue;
+      if (tag.length > maxSocialTagLength) {
+        error =
+            'Cada etiqueta puede tener máximo $maxSocialTagLength caracteres.';
+        continue;
+      }
+      if (containsSocialTag(_tags, tag)) {
+        error = 'La etiqueta "$tag" ya fue agregada.';
+        continue;
+      }
+      if (_tags.length >= maxSocialTags) {
+        error = 'Puedes agregar hasta $maxSocialTags etiquetas.';
+        break;
+      }
+      _tags.add(tag);
+      addedAny = true;
+    }
+
+    setState(() {
+      _tagError = error.isEmpty ? null : error;
+      if (addedAny) _tagsController.clear();
+    });
+    return error.isEmpty;
+  }
+
+  void _removeTag(String tag) {
+    setState(() {
+      _tags.remove(tag);
+      _tagError = null;
+    });
+  }
+
   Future<void> _submit() async {
     final file = _file;
     if (_titleController.text.trim().isEmpty || file == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Agrega título y archivo.')),
       );
+      return;
+    }
+    if (_tagsController.text.trim().isNotEmpty &&
+        !_addTags(_tagsController.text)) {
       return;
     }
 
@@ -80,7 +126,7 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
               description: _descriptionController.text,
               category: _category,
               area: _area,
-              tags: parseRepositoryTags(_tagsController.text),
+              tags: _tags,
               file: file,
             ),
           );
@@ -129,8 +175,13 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Subir documento',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                'SUBIR DOCUMENTO',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                  color: AppColors.primary,
+                ),
               ),
               const SizedBox(height: 16),
               const RepositoryFilterLabel(
@@ -148,14 +199,17 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 label: 'DESCRIPCIÓN BREVE',
               ),
               const SizedBox(height: 8),
+              RichTextEditorToolbar(
+                controller: _descriptionController,
+                enabled: !_uploading,
+              ),
               TextField(
                 controller: _descriptionController,
-                minLines: 2,
-                maxLines: 4,
-                maxLength: 250,
+                minLines: 8,
+                maxLines: 12,
+                maxLength: 2000,
                 decoration: repositoryInputDecoration(
                   hintText: 'Descripción breve',
-                  counterText: '',
                 ),
               ),
               const SizedBox(height: 12),
@@ -174,11 +228,46 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 label: 'ETIQUETAS',
               ),
               const SizedBox(height: 8),
+              if (_tags.isNotEmpty) ...[
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _tags
+                      .map(
+                        (tag) => InputChip(
+                          label: Text(tag),
+                          onDeleted: _uploading ? null : () => _removeTag(tag),
+                        ),
+                      )
+                      .toList(),
+                ),
+                const SizedBox(height: 8),
+              ],
               TextField(
                 controller: _tagsController,
+                enabled: !_uploading && _tags.length < maxSocialTags,
+                textInputAction: TextInputAction.done,
+                maxLength: maxSocialTagLength,
                 decoration: repositoryInputDecoration(
-                  hintText: 'Etiquetas separadas por coma (máx. 4)',
+                  hintText: 'Ej. ciencia de datos, convocatoria',
+                  helperText:
+                      'Enter o coma para agregar · ${_tags.length}/$maxSocialTags',
+                  errorText: _tagError,
+                  prefixIcon: const Icon(Icons.tag),
+                  suffixIcon: IconButton(
+                    tooltip: 'Agregar etiqueta',
+                    onPressed: _uploading || _tags.length >= maxSocialTags
+                        ? null
+                        : () => _addTags(_tagsController.text),
+                    icon: const Icon(Icons.add_circle_outline),
+                  ),
                 ),
+                onChanged: (_) {
+                  if (_tagError != null) {
+                    setState(() => _tagError = null);
+                  }
+                },
+                onSubmitted: _addTags,
               ),
               const SizedBox(height: 12),
               RepositoryFilterDropdown(
@@ -225,13 +314,4 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
       ),
     );
   }
-}
-
-List<String> parseRepositoryTags(String value) {
-  return value
-      .split(',')
-      .map((tag) => tag.trim().replaceFirst(RegExp(r'^#+'), ''))
-      .where((tag) => tag.isNotEmpty)
-      .take(4)
-      .toList();
 }

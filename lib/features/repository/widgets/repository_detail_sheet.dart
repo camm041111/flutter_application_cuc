@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../explore/widgets/news_tag.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../providers/repository_providers.dart';
 
@@ -83,13 +85,13 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                         children: [
                           Expanded(
                             child: Text(
-                              doc.title,
+                              doc.title.toUpperCase(),
                               style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w800,
-                                  color: AppColors.onSurface,
+                                  color: AppColors.primary,
                                   height: 1.2,
-                                  letterSpacing: -0.5),
+                                  letterSpacing: 0.4),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -180,14 +182,37 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                     const SizedBox(height: 12),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Text(
-                        doc.description.isEmpty
+                      child: MarkdownBody(
+                        data: doc.description.isEmpty
                             ? 'Este documento no incluye una descripción general.'
                             : doc.description,
-                        style: const TextStyle(
+                        selectable: true,
+                        styleSheet: MarkdownStyleSheet(
+                          p: const TextStyle(
                             fontSize: 14.5,
                             height: 1.6,
-                            color: AppColors.onSurface),
+                            color: AppColors.onSurface,
+                          ),
+                          strong: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.onSurface,
+                          ),
+                          em: const TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: AppColors.muted,
+                          ),
+                          code: const TextStyle(
+                            backgroundColor: AppColors.surface,
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                            color: AppColors.primary,
+                          ),
+                          codeblockDecoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                        ),
                       ),
                     ),
                     if (doc.tags.isNotEmpty) ...[
@@ -198,7 +223,7 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                           spacing: 8,
                           runSpacing: 8,
                           children: doc.tags
-                              .map((tag) => _DetailTag(label: tag))
+                              .map((tag) => NewsTag(label: tag))
                               .toList(),
                         ),
                       ),
@@ -339,30 +364,6 @@ class _DetailStatusBadge extends StatelessWidget {
             fontSize: 11,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.0),
-      ),
-    );
-  }
-}
-
-class _DetailTag extends StatelessWidget {
-  const _DetailTag({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        label.startsWith('#') ? label : '#$label',
-        style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.onSurface,
-            fontWeight: FontWeight.w600),
       ),
     );
   }

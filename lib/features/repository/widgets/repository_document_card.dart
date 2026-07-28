@@ -1,15 +1,15 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../explore/widgets/news_tag.dart';
 import '../providers/repository_providers.dart';
 import 'repository_detail_sheet.dart';
 
-class RepositoryDocumentCard extends ConsumerStatefulWidget {
+class RepositoryDocumentCard extends StatefulWidget {
   const RepositoryDocumentCard({
     super.key,
     required this.document,
@@ -18,13 +18,11 @@ class RepositoryDocumentCard extends ConsumerStatefulWidget {
   final RepositoryDocument document;
 
   @override
-  ConsumerState<RepositoryDocumentCard> createState() =>
-      RepositoryDocumentCardState();
+  State<RepositoryDocumentCard> createState() => RepositoryDocumentCardState();
 }
 
-class RepositoryDocumentCardState extends ConsumerState<RepositoryDocumentCard> {
+class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
   bool _downloading = false;
-  bool _deleting = false;
 
   void _openDetail() {
     showModalBottomSheet<void>(
@@ -82,53 +80,9 @@ class RepositoryDocumentCardState extends ConsumerState<RepositoryDocumentCard> 
     return File('${repositoryDirectory.path}/${widget.document.id}_$safeName');
   }
 
-  Future<void> _confirmDelete() async {
-    if (_deleting) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: const Text('Borrar documento', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: Text('¿Quieres borrar "${widget.document.title}" del repositorio?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.muted)),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Borrar'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    setState(() => _deleting = true);
-    try {
-      await ref.read(repositoryActionsProvider).deleteDocument(widget.document);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Documento borrado.')),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $error')),
-      );
-    } finally {
-      if (mounted) setState(() => _deleting = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final document = widget.document;
-    final canDeleteAsync = ref.watch(canDeleteRepositoryDocumentProvider(document));
 
     return InkWell(
       onTap: _openDetail,
@@ -138,10 +92,13 @@ class RepositoryDocumentCardState extends ConsumerState<RepositoryDocumentCard> 
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border.withValues(alpha: 0.3)), // Borde más sutil
+          border: Border.all(
+              color:
+                  AppColors.border.withValues(alpha: 0.3)), // Borde más sutil
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // Alineación superior para lectura natural
+          crossAxisAlignment: CrossAxisAlignment
+              .start, // Alineación superior para lectura natural
           children: [
             Container(
               width: 42,
@@ -149,9 +106,14 @@ class RepositoryDocumentCardState extends ConsumerState<RepositoryDocumentCard> 
               decoration: BoxDecoration(
                 color: AppColors.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                border:
+                    Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
               ),
-              child: const Icon(Icons.article_outlined, color: AppColors.primary, size: 20),
+              child: Icon(
+                repositoryCategoryIcon(document.category),
+                color: AppColors.primary,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -184,7 +146,8 @@ class RepositoryDocumentCardState extends ConsumerState<RepositoryDocumentCard> 
                   if (document.description.isNotEmpty) ...[
                     Text(
                       document.description,
-                      style: const TextStyle(fontSize: 12, color: AppColors.muted, height: 1.4),
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.muted, height: 1.4),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -196,11 +159,16 @@ class RepositoryDocumentCardState extends ConsumerState<RepositoryDocumentCard> 
                     spacing: 6,
                     runSpacing: 4,
                     children: [
-                      _MetaChip(icon: Icons.person_outline, label: document.authorName),
-                      const Text('•', style: TextStyle(color: AppColors.border, fontSize: 10)),
+                      _MetaChip(
+                          icon: Icons.person_outline,
+                          label: document.authorName),
+                      const Text('•',
+                          style:
+                              TextStyle(color: AppColors.border, fontSize: 10)),
                       _MetaChip(
                         icon: Icons.category_outlined,
-                        label: repositoryCategoryOptions[document.category] ?? document.category,
+                        label: repositoryCategoryOptions[document.category] ??
+                            document.category,
                       ),
                     ],
                   ),
@@ -209,49 +177,32 @@ class RepositoryDocumentCardState extends ConsumerState<RepositoryDocumentCard> 
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
-                      children: document.tags.map((tag) => _TagChip(label: tag)).toList(),
+                      children: document.tags
+                          .map((tag) => NewsTag(label: tag))
+                          .toList(),
                     ),
                   ],
                 ],
               ),
             ),
             const SizedBox(width: 12),
-            Column(
-              children: [
-                IconButton(
-                  tooltip: 'Descargar',
-                  onPressed: document.fileUrl.isEmpty || _downloading ? null : _downloadOrOpen,
-                  icon: _downloading
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.download_rounded, size: 18),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppColors.border.withValues(alpha: 0.2),
-                    minimumSize: const Size(36, 36),
-                    padding: EdgeInsets.zero,
-                  ),
-                ),
-                canDeleteAsync.maybeWhen(
-                  data: (canDelete) => canDelete
-                      ? Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: IconButton(
-                      tooltip: 'Borrar',
-                      onPressed: _deleting ? null : _confirmDelete,
-                      icon: _deleting
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                          : const Icon(Icons.delete_outline, size: 18),
-                      color: AppColors.error,
-                      style: IconButton.styleFrom(
-                        backgroundColor: AppColors.error.withValues(alpha: 0.1),
-                        minimumSize: const Size(36, 36),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                  )
-                      : const SizedBox.shrink(),
-                  orElse: () => const SizedBox.shrink(),
-                ),
-              ],
+            IconButton(
+              tooltip: 'Descargar',
+              onPressed: document.fileUrl.isEmpty || _downloading
+                  ? null
+                  : _downloadOrOpen,
+              icon: _downloading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.download_rounded, size: 18),
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.border.withValues(alpha: 0.2),
+                minimumSize: const Size(36, 36),
+                padding: EdgeInsets.zero,
+              ),
             ),
           ],
         ),
@@ -272,7 +223,11 @@ class _MetaChip extends StatelessWidget {
       children: [
         Icon(icon, size: 12, color: AppColors.muted),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.muted, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.muted,
+                fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -294,29 +249,27 @@ class _MiniStatusBadge extends StatelessWidget {
       ),
       child: Text(
         isRejected ? 'Rechazado' : 'Pendiente',
-        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+        style: TextStyle(
+            color: color,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5),
       ),
     );
   }
 }
 
-class _TagChip extends StatelessWidget {
-  const _TagChip({required this.label});
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.background, // Contraste contra el surface
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
-      ),
-      child: Text(
-        label.startsWith('#') ? label : '#$label',
-        style: const TextStyle(fontSize: 10, color: AppColors.muted, fontWeight: FontWeight.w600),
-      ),
-    );
+IconData repositoryCategoryIcon(String category) {
+  switch (category.toLowerCase()) {
+    case 'investigacion':
+      return Icons.science_outlined;
+    case 'manuales':
+      return Icons.menu_book_outlined;
+    case 'actas':
+      return Icons.assignment_outlined;
+    case 'divulgacion':
+      return Icons.campaign_outlined;
+    default:
+      return Icons.description_outlined;
   }
 }

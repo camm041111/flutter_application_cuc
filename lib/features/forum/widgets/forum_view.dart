@@ -39,7 +39,7 @@ class ForumView extends ConsumerWidget {
         },
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(child: ForumFiltersBar()),
+            const SliverToBoxAdapter(child: ForumFiltersBar()),
             threadsAsync.when(
               loading: () => const SliverFillRemaining(
                 child: Center(

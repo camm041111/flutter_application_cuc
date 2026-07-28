@@ -182,31 +182,88 @@ class RepositorySortBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: RepositorySort.values.map((sort) {
-          final selected = value == sort;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(sort.label),
-              selected: selected,
-              onSelected: (selected) => onChanged(sort),
-              selectedColor: AppColors.primary.withValues(alpha: 0.18),
-              labelStyle: TextStyle(
-                color: selected ? AppColors.primary : AppColors.muted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-              side: BorderSide(
-                color: selected ? AppColors.primary : AppColors.border,
+    return Row(
+      children: [
+        for (var index = 0; index < RepositorySort.values.length; index++) ...[
+          if (index > 0) const SizedBox(width: 8),
+          Expanded(
+            child: RepositorySortButton(
+              label: RepositorySort.values[index].label,
+              icon: repositorySortIcon(RepositorySort.values[index]),
+              active: value == RepositorySort.values[index],
+              onTap: () => onChanged(RepositorySort.values[index]),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class RepositorySortButton extends StatelessWidget {
+  const RepositorySortButton({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    const duration = Duration(milliseconds: 200);
+    final foregroundColor = active ? AppColors.background : AppColors.muted;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: AnimatedContainer(
+        duration: duration,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: active ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: active ? AppColors.primary : AppColors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: foregroundColor),
+            const SizedBox(width: 5),
+            Flexible(
+              child: AnimatedDefaultTextStyle(
+                duration: duration,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: foregroundColor,
+                ),
+                overflow: TextOverflow.ellipsis,
+                child: Text(label),
               ),
             ),
-          );
-        }).toList(),
+          ],
+        ),
       ),
     );
+  }
+}
+
+IconData repositorySortIcon(RepositorySort sort) {
+  switch (sort) {
+    case RepositorySort.newest:
+      return Icons.update;
+    case RepositorySort.oldest:
+      return Icons.history;
+    case RepositorySort.title:
+      return Icons.sort_by_alpha;
   }
 }
 
