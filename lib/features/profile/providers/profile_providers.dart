@@ -13,7 +13,7 @@ class UserProfile {
   final String estado;
   final String divisionAcronimo;
 
-  // 🛡️ NUEVOS CAMPOS: Pueden ser nulos si el usuario apenas se registró y no tiene club asignado
+  //Pueden ser nulos si el usuario apenas se registró y no tiene club asignado
   final String? clubId;
   final String? clubNombre;
 
@@ -30,7 +30,7 @@ class UserProfile {
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
-    // 🛡️ Manejo seguro de nulos (Null-Safety) por si el JOIN de clubes viene vacío
+    // Manejo seguro de nulos (Null-Safety) por si el JOIN de clubes viene vacío
     final clubData = json['clubes'];
 
     return UserProfile(
@@ -75,7 +75,7 @@ final profileProvider = FutureProvider.family<UserProfile, String>((ref, userId)
     key: 'profile:$userId',
     ttl: CacheTtl.profile,
     fetch: () async {
-      // 🚀 El JOIN Maestro: Traemos la división origen Y los datos del club asignado
+      // El JOIN Maestro: Traemos la división origen Y los datos del club asignado
       final response = await supabase
           .from('perfiles')
           .select('*, divisiones_academicas(acronimo), clubes(id, nombre)')

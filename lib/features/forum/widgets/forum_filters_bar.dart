@@ -1,12 +1,18 @@
-﻿part of 'forum_view.dart';
+import 'dart:async';
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class _ForumFiltersBar extends ConsumerStatefulWidget {
+import '../../repository/providers/repository_providers.dart';
+import '../providers/forum_providers.dart';
+class ForumFiltersBar extends ConsumerStatefulWidget {
+  ForumFiltersBar({super.key});
+
   @override
-  ConsumerState<_ForumFiltersBar> createState() => _ForumFiltersBarState();
+  ConsumerState<ForumFiltersBar> createState() => _ForumFiltersBarState();
 }
 
-class _ForumFiltersBarState extends ConsumerState<_ForumFiltersBar> {
+class _ForumFiltersBarState extends ConsumerState<ForumFiltersBar> {
   Timer? _debounce;
   late TextEditingController _searchController;
 

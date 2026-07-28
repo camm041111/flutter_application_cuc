@@ -1,14 +1,22 @@
-﻿part of 'forum_view.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class _ThreadComposerSheet extends ConsumerStatefulWidget {
-  const _ThreadComposerSheet();
+import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/social_tag_utils.dart';
+import '../../../core/widgets/correct_snackbar.dart';
+import '../../../core/widgets/rich_text_editor_toolbar.dart';
+import '../../repository/providers/repository_providers.dart';
+import '../providers/forum_providers.dart';
+
+class ThreadComposerSheet extends ConsumerStatefulWidget {
+  const ThreadComposerSheet({super.key});
 
   @override
-  ConsumerState<_ThreadComposerSheet> createState() =>
+  ConsumerState<ThreadComposerSheet> createState() =>
       _ThreadComposerSheetState();
 }
 
-class _ThreadComposerSheetState extends ConsumerState<_ThreadComposerSheet> {
+class _ThreadComposerSheetState extends ConsumerState<ThreadComposerSheet> {
   final _titleCtrl = TextEditingController();
   final _contentCtrl = TextEditingController();
   final _tagCtrl = TextEditingController();

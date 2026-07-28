@@ -1,15 +1,24 @@
-part of 'forum_view.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class _ThreadDetailSheet extends ConsumerStatefulWidget {
-  const _ThreadDetailSheet({required this.thread});
+import '../../../core/theme/app_theme.dart';
+import '../../profile/providers/profile_providers.dart';
+import '../providers/forum_providers.dart';
+import 'forum_replies.dart';
+import 'forum_user_avatar.dart';
+
+class ThreadDetailSheet extends ConsumerStatefulWidget {
+  const ThreadDetailSheet({super.key, required this.thread});
 
   final ForumThread thread;
 
   @override
-  ConsumerState<_ThreadDetailSheet> createState() => _ThreadDetailSheetState();
+  ConsumerState<ThreadDetailSheet> createState() => _ThreadDetailSheetState();
 }
 
-class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
+class _ThreadDetailSheetState extends ConsumerState<ThreadDetailSheet> {
   final _replyCtrl = TextEditingController();
   final _replyFocusNode = FocusNode();
   final _expandedReplyIds = <String>{};
@@ -249,7 +258,7 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
                                 ),
                               );
                             }
-                            return _ForumRepliesSection(
+                            return ForumRepliesSection(
                               replies: replies,
                               expandedReplyIds: _expandedReplyIds,
                               showAllReplies: _showAllReplies,

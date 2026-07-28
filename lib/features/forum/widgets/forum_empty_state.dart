@@ -1,7 +1,9 @@
-part of 'forum_view.dart';
+import 'package:flutter/material.dart';
 
-class _ForumEmptyState extends StatelessWidget {
-  const _ForumEmptyState({required this.title, required this.subtitle});
+import '../../../core/theme/app_theme.dart';
+
+class ForumEmptyState extends StatelessWidget {
+  const ForumEmptyState({required this.title, required this.subtitle});
   final String title;
   final String subtitle;
 
@@ -37,13 +39,3 @@ class _ForumEmptyState extends StatelessWidget {
   }
 }
 
-const _rootReplyKey = '__root__';
-
-Map<String, List<ForumReply>> _childrenByParentId(List<ForumReply> replies) {
-  final grouped = <String, List<ForumReply>>{};
-  for (final reply in replies) {
-    final parentKey = reply.parentReplyId ?? _rootReplyKey;
-    grouped.putIfAbsent(parentKey, () => <ForumReply>[]).add(reply);
-  }
-  return grouped;
-}

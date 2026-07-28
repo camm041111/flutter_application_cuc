@@ -1,7 +1,13 @@
-﻿part of 'forum_view.dart';
+import 'package:flutter/material.dart';
 
-class _ForumThreadCard extends StatelessWidget {
-  const _ForumThreadCard({required this.thread});
+import '../../../core/theme/app_theme.dart';
+import '../../explore/widgets/news_tag.dart';
+import '../providers/forum_providers.dart';
+import 'forum_user_avatar.dart';
+import 'thread_detail_sheet.dart';
+
+class ForumThreadCard extends StatelessWidget {
+  const ForumThreadCard({super.key, required this.thread});
 
   final ForumThread thread;
 
@@ -10,7 +16,7 @@ class _ForumThreadCard extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ThreadDetailSheet(thread: thread),
+      builder: (_) => ThreadDetailSheet(thread: thread),
     );
   }
 
@@ -141,4 +147,23 @@ class _ForumThreadCard extends StatelessWidget {
       ),
     );
   }
+}
+
+Color _areaColor(String area) {
+  if (area.contains('Salud')) return const Color(0xFF6BD6FF);
+  if (area.contains('Agro')) return const Color(0xFFFFC857);
+  if (area.contains('Sociales')) return const Color(0xFFFF8C6B);
+  if (area.contains('Naturales')) return const Color(0xFFB18CFF);
+  if (area.contains('Econ')) return const Color(0xFFFFB86B);
+  if (area.contains('Educ')) return const Color(0xFFFF7AB6);
+  return AppColors.primary;
+}
+
+String _relativeTime(DateTime date) {
+  final diff = DateTime.now().difference(date);
+  if (diff.inMinutes < 1) return 'Ahora';
+  if (diff.inHours < 1) return 'Hace ${diff.inMinutes}m';
+  if (diff.inDays < 1) return 'Hace ${diff.inHours}h';
+  if (diff.inDays < 7) return 'Hace ${diff.inDays}d';
+  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }

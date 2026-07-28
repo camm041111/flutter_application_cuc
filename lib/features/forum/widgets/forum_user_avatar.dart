@@ -1,4 +1,6 @@
-﻿part of 'forum_view.dart';
+import 'package:flutter/material.dart';
+
+import '../../../core/theme/app_theme.dart';
 
 class ForumUserAvatar extends StatelessWidget {
   const ForumUserAvatar({
@@ -78,21 +80,3 @@ String _initials(String value) {
   return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
 }
 
-Color _areaColor(String area) {
-  if (area.contains('Salud')) return const Color(0xFF6BD6FF);
-  if (area.contains('Agro')) return const Color(0xFFFFC857);
-  if (area.contains('Sociales')) return const Color(0xFFFF8C6B);
-  if (area.contains('Naturales')) return const Color(0xFFB18CFF);
-  if (area.contains('Econ')) return const Color(0xFFFFB86B);
-  if (area.contains('Educ')) return const Color(0xFFFF7AB6);
-  return AppColors.primary;
-}
-
-String _relativeTime(DateTime date) {
-  final diff = DateTime.now().difference(date);
-  if (diff.inMinutes < 1) return 'Ahora';
-  if (diff.inHours < 1) return 'Hace ${diff.inMinutes}m';
-  if (diff.inDays < 1) return 'Hace ${diff.inHours}h';
-  if (diff.inDays < 7) return 'Hace ${diff.inDays}d';
-  return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-}

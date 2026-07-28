@@ -1,7 +1,23 @@
-part of 'forum_view.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class _ForumRepliesSection extends StatelessWidget {
-  const _ForumRepliesSection({
+import '../../../core/theme/app_theme.dart';
+import '../providers/forum_providers.dart';
+import 'forum_user_avatar.dart';
+
+const _rootReplyKey = '__root__';
+
+Map<String, List<ForumReply>> _childrenByParentId(List<ForumReply> replies) {
+  final grouped = <String, List<ForumReply>>{};
+  for (final reply in replies) {
+    final parentKey = reply.parentReplyId ?? _rootReplyKey;
+    grouped.putIfAbsent(parentKey, () => <ForumReply>[]).add(reply);
+  }
+  return grouped;
+}
+
+class ForumRepliesSection extends StatelessWidget {
+  const ForumRepliesSection({
     required this.replies,
     required this.expandedReplyIds,
     required this.showAllReplies,
