@@ -20,8 +20,7 @@ const repositoryAreaOptions = {
   'Ciencias Agropecuarias': 'Ciencias Agropecuarias',
   'Ciencias Sociales y Humanidades': 'Ciencias Sociales y Humanidades',
   'Ciencias Naturales y Exactas': 'Ciencias Naturales y Exactas',
-  'Ciencias Económico Administrativas':
-      'Ciencias Económico Administrativas',
+  'Ciencias Económico Administrativas': 'Ciencias Económico Administrativas',
   'Educación y Artes': 'Educación y Artes',
 };
 
@@ -215,15 +214,12 @@ final repositoryDocumentsProvider =
     key: 'repository:documents:${filters.cacheKey}',
     ttl: CacheTtl.repository,
     fetch: () async {
-      dynamic query = supabase
-          .from('publicaciones_repositorio')
-          .select(
-              'id, id_autor, id_club, titulo, descripcion, categoria, area_conocimiento, etiquetas, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)')
-          .eq('estado', 'aprobado');
+      dynamic query = supabase.from('publicaciones_repositorio').select(
+          'id, id_autor, id_club, titulo, descripcion, categoria, area_conocimiento, etiquetas, urls_archivos, estado, fecha_creacion, perfiles(nombre_completo), clubes(nombre)');
 
       if (filters.date != null) {
-        final start =
-            DateTime(filters.date!.year, filters.date!.month, filters.date!.day);
+        final start = DateTime(
+            filters.date!.year, filters.date!.month, filters.date!.day);
         final end = start.add(const Duration(days: 1));
         query = query
             .gte('fecha_creacion', start.toIso8601String())
@@ -253,8 +249,8 @@ final repositoryDocumentsProvider =
 
       final response = await query;
       final docs = (response as List<dynamic>)
-          .map((item) =>
-              RepositoryDocument.fromJson(Map<String, dynamic>.from(item as Map)))
+          .map((item) => RepositoryDocument.fromJson(
+              Map<String, dynamic>.from(item as Map)))
           .where((doc) {
         if (filters.author.trim().isEmpty) return true;
         return doc.authorName
@@ -382,8 +378,8 @@ final repositoryActionsProvider = Provider<RepositoryActions>((ref) {
   return RepositoryActions(ref);
 });
 
-final canDeleteRepositoryDocumentProvider =
-    FutureProvider.autoDispose.family<bool, RepositoryDocument>((ref, document) async {
+final canDeleteRepositoryDocumentProvider = FutureProvider.autoDispose
+    .family<bool, RepositoryDocument>((ref, document) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
   if (user == null) return false;
@@ -407,6 +403,26 @@ class RepositoryActions {
 
   final Ref ref;
 
+  Future<void> reviewDocument(
+    String documentId,
+    bool isApproved,
+  ) async {
+    final supabase = ref.read(supabaseClientProvider);
+
+    await supabase.rpc(
+      'revisar_publicacion_repositorio',
+      params: {
+        'p_id_publicacion': documentId,
+        'p_aprobada': isApproved,
+      },
+    );
+
+    final cache = ref.read(appCacheServiceProvider);
+    await cache.invalidatePrefix('repository:');
+    await cache.invalidatePrefix('club:');
+    ref.invalidate(repositoryDocumentsProvider);
+  }
+
   Future<String> uploadDocument(RepositoryUploadInput input) async {
     final fileBytes = input.file.bytes;
     if (fileBytes == null) {
@@ -429,7 +445,8 @@ class RepositoryActions {
         .single();
     final extension = input.file.extension?.toLowerCase() ?? 'bin';
     if (!_allowedExtensions.contains(extension)) {
-      throw Exception('Formato no permitido. Usa PDF, DOC, DOCX, TXT, JPG, PNG o JPEG.');
+      throw Exception(
+          'Formato no permitido. Usa PDF, DOC, DOCX, TXT, JPG, PNG o JPEG.');
     }
     final safeName =
         input.file.name.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');

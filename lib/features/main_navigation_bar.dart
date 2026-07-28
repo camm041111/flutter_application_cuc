@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'explore/explore_screen.dart';
 import 'agenda/agenda_screen.dart';
 import 'forum/forum_screen.dart';
-import 'repository/repository_screen.dart';
+import 'repository/widgets/repository_view.dart';
 import 'profile/profile_screen.dart';
 import '../core/theme/app_theme.dart';
 import '../core/providers/supabase_provider.dart'; // 👈 Inyección de dependencias
@@ -74,7 +74,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       const ExploreScreen(),
       const AgendaScreen(),
       const ForumScreen(),
-      const RepositoryScreen(),
+      const RepositoryView(),
       ProfileScreen(userId: currentUser.id), // 👈 Inyección dinámica segura
     ];
 

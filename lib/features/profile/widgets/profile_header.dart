@@ -7,7 +7,7 @@ import '../../../core/cache/app_cache_service.dart';
 import '../../../core/providers/supabase_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../club/screens/club_profile_screen.dart';
-import '../../repository/repository_screen.dart';
+import '../../repository/widgets/repository_view.dart';
 import '../providers/profile_providers.dart';
 
 enum _AvatarAction { view, change }
@@ -305,7 +305,7 @@ class _ProfileHeaderState extends ConsumerState<ProfileHeader> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const RepositoryScreen()),
+                MaterialPageRoute(builder: (_) => const RepositoryView()),
               );
             },
           ),
