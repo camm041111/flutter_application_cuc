@@ -105,7 +105,6 @@ class _ReplyTile extends ConsumerStatefulWidget {
 }
 
 class _ReplyTileState extends ConsumerState<_ReplyTile> {
-  // 🧠 MICRO-ESTADO: Controlamos los votos en la memoria RAM del Widget
   late int _localUpVotes;
   late int _localDownVotes;
   bool _isProcessing = false;
@@ -134,28 +133,17 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
   Future<void> _handleVote({required bool up}) async {
     if (_isProcessing) return;
 
-    // 1. Mutación Optimista: UI instantánea
     setState(() {
       _isProcessing = true;
-      if (up) {
-        _localUpVotes++;
-      } else {
-        _localDownVotes++;
-      }
+      if (up) _localUpVotes++; else _localDownVotes++;
     });
 
-    // 2. Ejecución asíncrona en Supabase
     final success = await ref.read(forumActionsProvider).voteReply(widget.reply, up: up);
 
     if (mounted) {
-      // 3. Rollback en caso de fallo de red (Fail-Safe)
       if (!success) {
         setState(() {
-          if (up) {
-            _localUpVotes--;
-          } else {
-            _localDownVotes--;
-          }
+          if (up) _localUpVotes--; else _localDownVotes--;
         });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Fallo de conexión al servidor.')),
@@ -167,16 +155,26 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
 
   @override
   Widget build(BuildContext context) {
+    // Definimos el color de la línea de jerarquía.
+    // Usamos el verde institucional primario para respuestas directas y un gris tenue para sub-respuestas.
+    final depthColor = widget.depth == 1
+        ? AppColors.primary.withValues(alpha: 0.5)
+        : AppColors.border;
+
     return Container(
-      margin: EdgeInsets.only(left: widget.depth * 18.0, bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: EdgeInsets.only(
+        left: widget.depth == 0 ? 0 : 16.0,
+        bottom: 12,
+      ),
       decoration: BoxDecoration(
-        color: AppColors.surface, // Asumiendo tu gris oscuro de fondo (no negro puro)
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-            color: widget.depth == 0
-                ? AppColors.border
-                : AppColors.primary.withValues(alpha: 0.35)),
+        // Borde izquierdo minimalista para indicar la profundidad del comentario
+        border: widget.depth > 0
+            ? Border(left: BorderSide(color: depthColor, width: 2.0))
+            : null,
+      ),
+      padding: EdgeInsets.only(
+        left: widget.depth > 0 ? 12.0 : 0,
+        top: 4,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,116 +184,174 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
               ForumUserAvatar(
                 name: widget.reply.authorName,
                 imageUrl: widget.reply.authorAvatarUrl,
-                size: 32,
+                size: 28, // Reducido para mayor elegancia
               ),
-              const SizedBox(width: 9),
+              const SizedBox(width: 8),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(widget.reply.authorName,
+                    Text(
+                      widget.reply.authorName,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2, // Estética moderna
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(width: 6),
+                    const Text('•', style: TextStyle(color: AppColors.muted, fontSize: 10)),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        widget.reply.authorMeta,
                         style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700),
-                        overflow: TextOverflow.ellipsis),
-                    Text(widget.reply.authorMeta,
-                        style: const TextStyle(
-                            fontSize: 10, color: AppColors.muted),
-                        overflow: TextOverflow.ellipsis),
+                          fontSize: 11,
+                          color: AppColors.muted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(widget.reply.content,
-              style: const TextStyle(fontSize: 13, height: 1.45)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
+          Text(
+            widget.reply.content,
+            style: const TextStyle(
+              fontSize: 14, // Aumentado ligeramente para mejor lectura científica
+              height: 1.5,
+              color: AppColors.onSurface,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // todoen una sola línea horizontal
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _CompactReplyAction(
-                icon: Icons.thumb_up_alt_outlined,
-                tooltip: 'Me gusta',
+              _CompactActionBtn(
+                icon: Icons.keyboard_arrow_up_rounded,
                 count: _localUpVotes,
                 onPressed: () => _handleVote(up: true),
+                isActive: false, // Aquí podrías inyectar si el usuario ya votó
               ),
-              _CompactReplyAction(
-                icon: Icons.thumb_down_alt_outlined,
-                tooltip: 'No me gusta',
+              _CompactActionBtn(
+                icon: Icons.keyboard_arrow_down_rounded,
                 count: _localDownVotes,
-                muted: true,
                 onPressed: () => _handleVote(up: false),
+                isMuted: true,
               ),
+              const Spacer(), // Empuja las respuestas a la derecha
+              if (widget.childCount > 0)
+                _TextActionBtn(
+                  icon: widget.childrenExpanded ? Icons.unfold_less_rounded : Icons.chat_bubble_outline_rounded,
+                  label: widget.childrenExpanded ? 'Ocultar' : '${widget.childCount} res',
+                  onPressed: widget.onToggleChildren,
+                  color: AppColors.muted,
+                ),
               if (widget.onReply != null)
-                TextButton.icon(
+                _TextActionBtn(
+                  icon: Icons.reply_rounded,
+                  label: 'Responder',
                   onPressed: widget.onReply,
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    foregroundColor: AppColors.primary,
-                    textStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  icon: const Icon(Icons.reply, size: 16),
-                  label: const Text('Responder'),
+                  color: AppColors.primary,
                 ),
             ],
           ),
-          if (widget.childCount > 0) ...[
-            const SizedBox(height: 2),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: widget.onToggleChildren,
-                icon: Icon(
-                  widget.childrenExpanded ? Icons.expand_less : Icons.expand_more,
-                  size: 18,
-                ),
-                label: Text(
-                  widget.childrenExpanded
-                      ? 'Ocultar comentarios'
-                      : widget.childCount == 1
-                      ? 'Ver 1 comentario'
-                      : 'Ver ${widget.childCount} comentarios',
-                ),
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 }
 
-class _CompactReplyAction extends StatelessWidget {
-  const _CompactReplyAction({
+/// Botón estandarizado para Upvotes / Downvotes
+class _CompactActionBtn extends StatelessWidget {
+  const _CompactActionBtn({
     required this.icon,
-    required this.tooltip,
     required this.onPressed,
     required this.count,
-    this.muted = false,
+    this.isMuted = false,
+    this.isActive = false,
   });
 
   final IconData icon;
-  final String tooltip;
   final VoidCallback? onPressed;
   final int count;
-  final bool muted;
+  final bool isMuted;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
-    final color = muted ? AppColors.muted : AppColors.primary;
-    return TextButton.icon(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        visualDensity: VisualDensity.compact,
-        padding: const EdgeInsets.symmetric(horizontal: 6),
-        foregroundColor: color,
-        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+    final color = isActive
+        ? AppColors.primary
+        : (isMuted ? AppColors.muted : AppColors.onSurface.withValues(alpha: 0.7));
+
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 4),
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
-      icon: Icon(icon, size: 17),
-      label: Text(count.toString()),
+    );
+  }
+}
+
+/// Botón estandarizado para Texto (Responder, Ver comentarios)
+class _TextActionBtn extends StatelessWidget {
+  const _TextActionBtn({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12, // 🛡️ Tipografía estrictamente alineada
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

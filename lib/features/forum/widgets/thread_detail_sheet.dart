@@ -29,6 +29,7 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
     final text = _replyCtrl.text.trim();
     if (text.isEmpty || _saving) return;
     setState(() => _saving = true);
+
     try {
       // 🛡️ ARQUITECTURA: Delegamos la transacción al Action unificado del Foro
       await ref.read(forumActionsProvider).createReply(
@@ -58,7 +59,7 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final repliesAsync = ref.watch(forumRepliesProvider(widget.thread.id));
-    // 🛡️ ARQUITECTURA: Consumimos el puente de sesión hacia la Verdadera Identidad
+
     final profileAsync = ref.watch(currentUserProfileProvider);
 
     return DraggableScrollableSheet(
@@ -74,7 +75,7 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
           ),
           child: Container(
             decoration: const BoxDecoration(
-              color: AppColors.background,
+              color: AppColors.background, // Gris oscuro definido en tu tema
               borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Column(
@@ -82,133 +83,197 @@ class _ThreadDetailSheetState extends ConsumerState<_ThreadDetailSheet> {
                 Expanded(
                   child: ListView(
                     controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+                    // 🛡️ Padding ajustado para permitir que el macro-divisor abarque todo el ancho
+                    padding: const EdgeInsets.only(bottom: 18),
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              widget.thread.title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
+                      // ─── ZONA 1: LA FUENTE DE LA VERDAD (PREGUNTA PRINCIPAL) ───
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                widget.thread.title,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.3,
+                                  color: AppColors.onSurface,
+                                ),
                               ),
                             ),
-                          ),
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.close),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        widget.thread.authorMeta,
-                        style: const TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 12,
+                            IconButton(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.close),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 12),
 
-                      // 🛡️ ARQUITECTURA: Motor de Markdown para parsear el contenido rico de Supabase
-                      MarkdownBody(
-                        data: widget.thread.content,
-                        selectable: true,
-                        onTapLink: (text, href, title) async {
-                          if (href != null) {
-                            final url = Uri.parse(href);
-                            if (await canLaunchUrl(url)) {
-                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                      // Metadatos consolidados del autor del hilo
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          children: [
+                            ForumUserAvatar(
+                              name: widget.thread.authorName,
+                              imageUrl: widget.thread.authorAvatarUrl,
+                              size: 28,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.thread.authorName,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  Text(
+                                    widget.thread.authorMeta,
+                                    style: const TextStyle(
+                                      color: AppColors.muted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Cuerpo Markdown de la pregunta
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                        child: MarkdownBody(
+                          data: widget.thread.content,
+                          selectable: true,
+                          onTapLink: (text, href, title) async {
+                            if (href != null) {
+                              final url = Uri.parse(href);
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
                             }
-                          }
-                        },
-                        styleSheet: MarkdownStyleSheet(
-                          p: const TextStyle(
-                            fontSize: 14,
-                            height: 1.6,
-                            color: AppColors.onSurface,
-                          ),
-                          a: const TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
-                            decoration: TextDecoration.underline,
-                          ),
-                          strong: const TextStyle(
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.onSurface,
-                          ),
-                          em: const TextStyle(
-                            fontStyle: FontStyle.italic,
-                            color: AppColors.muted,
-                          ),
-                          code: const TextStyle(
-                            backgroundColor: AppColors.background,
-                            fontFamily: 'monospace',
-                            fontSize: 13,
-                            color: AppColors.primary,
-                          ),
-                          codeblockDecoration: BoxDecoration(
-                            color: AppColors.background,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Respuestas',
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 10),
-                      repliesAsync.when(
-                        loading: () => const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Center(
-                            child: CircularProgressIndicator(
+                          },
+                          styleSheet: MarkdownStyleSheet(
+                            p: const TextStyle(
+                              fontSize: 14.5,
+                              height: 1.6,
+                              color: AppColors.onSurface,
+                            ),
+                            a: const TextStyle(
+                              color: AppColors.primary, // Acento visual con color institucional
+                              fontWeight: FontWeight.w700,
+                              decoration: TextDecoration.underline,
+                            ),
+                            strong: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.onSurface,
+                            ),
+                            em: const TextStyle(
+                              fontStyle: FontStyle.italic,
+                              color: AppColors.muted,
+                            ),
+                            code: const TextStyle(
+                              backgroundColor: AppColors.background,
+                              fontFamily: 'monospace',
+                              fontSize: 13,
                               color: AppColors.primary,
                             ),
+                            codeblockDecoration: BoxDecoration(
+                              color: AppColors.background,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.border),
+                            ),
                           ),
                         ),
-                        error: (error, _) => Text(
-                          '$error',
-                          style: const TextStyle(color: AppColors.error),
-                        ),
-                        data: (replies) {
-                          if (replies.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16),
-                              child: Text(
-                                'Sé el primero en responder.',
-                                style: TextStyle(color: AppColors.muted),
+                      ),
+
+
+                      Container(
+                        width: double.infinity,
+                        height: 6,
+                        color: AppColors.border.withValues(alpha: 0.3),
+                      ),
+
+
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.forum_outlined, size: 18, color: AppColors.muted),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Discusión (${widget.thread.replyCount})',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                color: AppColors.muted,
+                                letterSpacing: 0.3,
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: repliesAsync.when(
+                          loading: () => const Padding(
+                            padding: EdgeInsets.all(24),
+                            child: Center(
+                              child: CircularProgressIndicator(color: AppColors.primary),
+                            ),
+                          ),
+                          error: (error, _) => Text(
+                            '$error',
+                            style: const TextStyle(color: AppColors.error),
+                          ),
+                          data: (replies) {
+                            if (replies.isEmpty) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 32),
+                                child: Center(
+                                  child: Text(
+                                    'No hay respuestas aún.\nSé el primero en aportar.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: AppColors.muted, height: 1.5),
+                                  ),
+                                ),
+                              );
+                            }
+                            return _ForumRepliesSection(
+                              replies: replies,
+                              expandedReplyIds: _expandedReplyIds,
+                              showAllReplies: _showAllReplies,
+                              onShowAllReplies: () => setState(() => _showAllReplies = true),
+                              onToggleChildren: (replyId) {
+                                setState(() {
+                                  if (_expandedReplyIds.contains(replyId)) {
+                                    _expandedReplyIds.remove(replyId);
+                                  } else {
+                                    _expandedReplyIds.add(replyId);
+                                  }
+                                });
+                              },
+                              onReply: (reply) {
+                                setState(() {
+                                  _parentReplyId = reply.id;
+                                  _parentReplyAuthor = reply.authorName;
+                                  _expandedReplyIds.add(reply.id);
+                                });
+                                _replyFocusNode.requestFocus();
+                              },
                             );
-                          }
-                          return _ForumRepliesSection(
-                            replies: replies,
-                            expandedReplyIds: _expandedReplyIds,
-                            showAllReplies: _showAllReplies,
-                            onShowAllReplies: () =>
-                                setState(() => _showAllReplies = true),
-                            onToggleChildren: (replyId) {
-                              setState(() {
-                                if (_expandedReplyIds.contains(replyId)) {
-                                  _expandedReplyIds.remove(replyId);
-                                } else {
-                                  _expandedReplyIds.add(replyId);
-                                }
-                              });
-                            },
-                            onReply: (reply) {
-                              setState(() {
-                                _parentReplyId = reply.id;
-                                _parentReplyAuthor = reply.authorName;
-                                _expandedReplyIds.add(reply.id);
-                              });
-                              _replyFocusNode.requestFocus();
-                            },
-                          );
-                        },
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -269,9 +334,13 @@ class _ReplyComposerBar extends StatelessWidget {
             data: (profile) {
               // 🛡️ ARQUITECTURA: Zero Trust UI. Validación estricta usando el estado de UserProfile
               if (profile?.estado != 'activo') {
-                return const Text(
-                  'Tu perfil está en modo solo lectura.',
-                  style: TextStyle(color: AppColors.muted),
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Text(
+                    'Tu perfil está en modo solo lectura.',
+                    style: TextStyle(color: AppColors.muted),
+                    textAlign: TextAlign.center,
+                  ),
                 );
               }
 
