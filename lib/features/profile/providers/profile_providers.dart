@@ -13,7 +13,7 @@ class UserProfile {
   final String estado;
   final String divisionAcronimo;
 
-  // 🛡️ NUEVOS CAMPOS: Pueden ser nulos si el usuario apenas se registró y no tiene club asignado
+  //Pueden ser nulos si el usuario apenas se registró y no tiene club asignado
   final String? clubId;
   final String? clubNombre;
 
@@ -30,7 +30,7 @@ class UserProfile {
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
-    // 🛡️ Manejo seguro de nulos (Null-Safety) por si el JOIN de clubes viene vacío
+    // Manejo seguro de nulos (Null-Safety) por si el JOIN de clubes viene vacío
     final clubData = json['clubes'];
 
     return UserProfile(
@@ -75,7 +75,7 @@ final profileProvider = FutureProvider.family<UserProfile, String>((ref, userId)
     key: 'profile:$userId',
     ttl: CacheTtl.profile,
     fetch: () async {
-      // 🚀 El JOIN Maestro: Traemos la división origen Y los datos del club asignado
+      // El JOIN Maestro: Traemos la división origen Y los datos del club asignado
       final response = await supabase
           .from('perfiles')
           .select('*, divisiones_academicas(acronimo), clubes(id, nombre)')
@@ -179,4 +179,14 @@ final recentPostsProvider = FutureProvider.family<List<Map<String, dynamic>>, St
       .eq('estado', 'aprobado')
       .order('fecha_creacion', ascending: false)
       .limit(3); // Candado de seguridad para no desbordar la UI
+});
+// 6. Provider del Usuario Actual (Puente para la UI)
+final currentUserProfileProvider = FutureProvider.autoDispose<UserProfile?>((ref) async {
+  final supabase = ref.read(supabaseClientProvider);
+  final user = supabase.auth.currentUser;
+
+  if (user == null) return null;
+
+  // Consumimos la única fuente de la verdad
+  return await ref.watch(profileProvider(user.id).future);
 });

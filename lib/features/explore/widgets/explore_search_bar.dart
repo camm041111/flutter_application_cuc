@@ -3,17 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/dashboard_search_field.dart';
 import '../providers/explore_providers.dart';
 
 class ExploreSearchBar extends ConsumerStatefulWidget {
   const ExploreSearchBar({super.key});
 
   @override
-  ConsumerState<ExploreSearchBar> createState() => _ExploreSearchBarState();
+  ConsumerState<ExploreSearchBar> createState() => ExploreSearchBarState();
 }
 
-class _ExploreSearchBarState extends ConsumerState<ExploreSearchBar> {
+class ExploreSearchBarState extends ConsumerState<ExploreSearchBar> {
   Timer? _debounce;
 
   @override
@@ -33,29 +33,8 @@ class _ExploreSearchBarState extends ConsumerState<ExploreSearchBar> {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: TextField(
-        style: const TextStyle(fontSize: 14),
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: 'Buscar noticias, personas o matrículas...',
-          hintStyle: const TextStyle(color: AppColors.muted),
-          prefixIcon: const Icon(Icons.search, color: AppColors.muted),
-          filled: true,
-          fillColor: AppColors.surface,
-          contentPadding: const EdgeInsets.symmetric(vertical: 0),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: AppColors.primary),
-          ),
-        ),
+      child: DashboardSearchField(
+        hintText: 'Buscar noticias, personas o matrículas...',
         onChanged: _onSearchChanged,
       ),
     );

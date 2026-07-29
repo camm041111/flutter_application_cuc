@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/social_tag_utils.dart';
 import '../../../core/widgets/correct_snackbar.dart';
+import '../../../core/widgets/rich_text_editor_toolbar.dart';
 import '../providers/explore_providers.dart';
 
 class NewsComposerSheet extends ConsumerStatefulWidget {
@@ -29,50 +30,6 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
   String? _inlineError;
   String? _tagError;
 
-  void _wrapSelection(String prefix, String suffix,
-      {String placeholder = 'texto'}) {
-    final value = _contentCtrl.value;
-    final selection = value.selection;
-    final hasSelection = selection.isValid && !selection.isCollapsed;
-    final start = selection.isValid ? selection.start : value.text.length;
-    final end = selection.isValid ? selection.end : value.text.length;
-    final selected =
-        hasSelection ? value.text.substring(start, end) : placeholder;
-    final replacement = '$prefix$selected$suffix';
-
-    _contentCtrl.value = value.copyWith(
-      text: value.text.replaceRange(start, end, replacement),
-      selection: TextSelection(
-          baseOffset: start + prefix.length,
-          extentOffset: start + prefix.length + selected.length),
-      composing: TextRange.empty,
-    );
-  }
-
-  Future<void> _insertLink() async {
-    final selection = _contentCtrl.selection;
-    final start =
-        selection.isValid ? selection.start : _contentCtrl.text.length;
-    final end = selection.isValid ? selection.end : start;
-    final selectedText =
-        start != end ? _contentCtrl.text.substring(start, end) : '';
-
-    final result = await showModalBottomSheet<({String label, String url})>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _LinkEditorSheet(initialLabel: selectedText),
-    );
-
-    if (result == null || !mounted) return;
-    final markup = '[${result.label}](${result.url})';
-    _contentCtrl.value = _contentCtrl.value.copyWith(
-      text: _contentCtrl.text.replaceRange(start, end, markup),
-      selection: TextSelection.collapsed(offset: start + markup.length),
-      composing: TextRange.empty,
-    );
-  }
-
   @override
   void dispose() {
     _titleCtrl.dispose();
@@ -91,7 +48,7 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
       if (tag.isEmpty) continue;
       if (tag.length > maxSocialTagLength) {
         error =
-            'Cada etiqueta puede tener máximo $maxSocialTagLength caracteres.';
+            'Cada etiqueta puede tener mÃ¡ximo $maxSocialTagLength caracteres.';
         continue;
       }
       if (containsSocialTag(_tags, tag)) {
@@ -137,14 +94,14 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
             ListTile(
               leading: const Icon(Icons.photo_library_outlined,
                   color: AppColors.primary),
-              title: const Text('Galería de fotos',
+              title: const Text('GalerÃ­a de fotos',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(context, ImageSource.gallery),
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt_outlined,
                   color: AppColors.primary),
-              title: const Text('Tomar fotografía',
+              title: const Text('Tomar fotografÃ­a',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
               onTap: () => Navigator.pop(context, ImageSource.camera),
             ),
@@ -164,10 +121,10 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
 
     if (image != null) {
       final sizeInBytes = await image.length();
-      // Validación preventiva: 5 megabytes = 5,242,880 bytes
+      // ValidaciÃ³n preventiva: 5 megabytes = 5,242,880 bytes
       if (sizeInBytes > 5 * 1024 * 1024) {
         setState(() =>
-            _inlineError = 'La imagen excede el límite permitido de 5MB.');
+            _inlineError = 'La imagen excede el lÃ­mite permitido de 5MB.');
         return;
       }
       setState(() {
@@ -199,7 +156,7 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
         context,
         icon: Icons.check_circle_outline,
         iconColor: AppColors.primary,
-        message: 'Noticia publicada con éxito.',
+        message: 'Noticia publicada con Ã©xito.',
       );
     } catch (e) {
       setState(() => _inlineError = e.toString().replaceAll('Exception: ', ''));
@@ -253,53 +210,21 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildFieldLabel('Título de la noticia'),
+                  _buildFieldLabel('TÃ­tulo de la noticia'),
                   TextFormField(
                     controller: _titleCtrl,
                     textCapitalization: TextCapitalization.sentences,
                     decoration: const InputDecoration(
                         hintText: 'Ej. Gran Cierre de Convocatorias'),
                     validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Ingresa un título válido'
+                        ? 'Ingresa un tÃ­tulo vÃ¡lido'
                         : null,
                   ),
                   const SizedBox(height: 16),
                   _buildFieldLabel('Contenido del comunicado'),
-                  Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      children: [
-                        _FormatButton(
-                          tooltip: 'Negrita',
-                          icon: Icons.format_bold,
-                          onPressed: () => _wrapSelection('**', '**'),
-                        ),
-                        _FormatButton(
-                          tooltip: 'Cursiva',
-                          icon: Icons.format_italic,
-                          onPressed: () => _wrapSelection('_', '_'),
-                        ),
-                        Container(
-                            width: 1,
-                            height: 26,
-                            margin: const EdgeInsets.symmetric(horizontal: 6),
-                            color: AppColors.border),
-                        _FormatButton(
-                          tooltip: 'Agregar enlace',
-                          icon: Icons.link,
-                          label: 'Enlace',
-                          onPressed: _insertLink,
-                        ),
-                      ],
-                    ),
+                  RichTextEditorToolbar(
+                    controller: _contentCtrl,
+                    enabled: !_saving,
                   ),
                   TextFormField(
                     controller: _contentCtrl,
@@ -308,9 +233,9 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
                     maxLines: 14,
                     maxLength: 2000,
                     decoration: const InputDecoration(
-                        hintText: 'Escribe el mensaje oficial aquí...'),
+                        hintText: 'Escribe el mensaje oficial aquÃ­...'),
                     validator: (value) => value == null || value.trim().isEmpty
-                        ? 'El contenido no puede estar vacío'
+                        ? 'El contenido no puede estar vacÃ­o'
                         : null,
                   ),
                   const SizedBox(height: 8),
@@ -338,7 +263,7 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
                     decoration: InputDecoration(
                       hintText: 'Ej. inteligencia artificial, convocatoria',
                       helperText:
-                          'Enter o coma para agregar · ${_tags.length}/$maxSocialTags',
+                          'Enter o coma para agregar Â· ${_tags.length}/$maxSocialTags',
                       errorText: _tagError,
                       prefixIcon: const Icon(Icons.tag),
                       suffixIcon: IconButton(
@@ -357,7 +282,7 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
                     onSubmitted: _addTags,
                   ),
                   const SizedBox(height: 8),
-                  _buildFieldLabel('Imagen promocional (Máx 5MB)'),
+                  _buildFieldLabel('Imagen promocional (MÃ¡x 5MB)'),
                   const SizedBox(height: 4),
                   GestureDetector(
                     onTap: _saving ? null : _pickImage,
@@ -452,197 +377,6 @@ class _NewsComposerSheetState extends ConsumerState<NewsComposerSheet> {
                           : const Icon(Icons.send_outlined),
                       label: const Text('PUBLICAR COMUNICADO'),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FormatButton extends StatelessWidget {
-  const _FormatButton(
-      {required this.tooltip,
-      required this.icon,
-      required this.onPressed,
-      this.label});
-
-  final String tooltip;
-  final IconData icon;
-  final VoidCallback onPressed;
-  final String? label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(9),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 21, color: AppColors.onSurface),
-                if (label != null) ...[
-                  const SizedBox(width: 6),
-                  Text(label!,
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w700)),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LinkEditorSheet extends StatefulWidget {
-  const _LinkEditorSheet({required this.initialLabel});
-
-  final String initialLabel;
-
-  @override
-  State<_LinkEditorSheet> createState() => _LinkEditorSheetState();
-}
-
-class _LinkEditorSheetState extends State<_LinkEditorSheet> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _labelCtrl;
-  final _urlCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _labelCtrl = TextEditingController(text: widget.initialLabel);
-  }
-
-  @override
-  void dispose() {
-    _labelCtrl.dispose();
-    _urlCtrl.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    final rawUrl = _urlCtrl.text.trim();
-    Navigator.pop(context, (
-      label: _labelCtrl.text.trim(),
-      url: rawUrl.startsWith('http://') || rawUrl.startsWith('https://')
-          ? rawUrl
-          : 'https://$rawUrl',
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SingleChildScrollView(
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 18),
-                      decoration: BoxDecoration(
-                        color: AppColors.border,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const Row(
-                    children: [
-                      Icon(Icons.link, color: AppColors.primary),
-                      SizedBox(width: 10),
-                      Text('Agregar enlace',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  TextFormField(
-                    controller: _labelCtrl,
-                    autofocus: widget.initialLabel.isEmpty,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'Texto visible',
-                      hintText: 'Ej. Consulta la convocatoria',
-                    ),
-                    validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Escribe el texto del enlace'
-                        : null,
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _urlCtrl,
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.done,
-                    autocorrect: false,
-                    enableSuggestions: false,
-                    onFieldSubmitted: (_) => _submit(),
-                    decoration: const InputDecoration(
-                      labelText: 'Dirección web',
-                      hintText: 'https://ejemplo.com',
-                    ),
-                    validator: (value) {
-                      final raw = value?.trim() ?? '';
-                      final normalized = raw.startsWith('http://') ||
-                              raw.startsWith('https://')
-                          ? raw
-                          : 'https://$raw';
-                      final uri = Uri.tryParse(normalized);
-                      return uri == null ||
-                              !uri.hasAuthority ||
-                              uri.host.isEmpty
-                          ? 'Ingresa una dirección web válida'
-                          : null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('CANCELAR'),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _submit,
-                          icon: const Icon(Icons.add_link),
-                          label: const Text('AGREGAR'),
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),
