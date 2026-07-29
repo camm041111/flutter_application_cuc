@@ -20,12 +20,14 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _tagsController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
   final _tags = <String>[];
   String _category = repositoryCategoryOptions.keys.first;
   String _area = repositoryAreaOptions.keys.first;
   PlatformFile? _file;
   bool _uploading = false;
   String? _tagError;
+  String? _inlineError;
 
   @override
   void dispose() {
@@ -64,7 +66,10 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
       return;
     }
 
-    setState(() => _file = file);
+    setState(() {
+      _file = file;
+      _inlineError = null;
+    });
   }
 
   bool _addTags(String rawValue) {
@@ -106,13 +111,11 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
   }
 
   Future<void> _submit() async {
+    setState(() => _inlineError = null);
+    if (!_formKey.currentState!.validate()) return;
+
     final file = _file;
-    if (_titleController.text.trim().isEmpty || file == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Agrega título y archivo.')),
-      );
-      return;
-    }
+    if (file == null) return;
     if (_tagsController.text.trim().isNotEmpty &&
         !_addTags(_tagsController.text)) {
       return;
@@ -147,9 +150,12 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
-      );
+      final cleanError = error.toString().replaceFirst('Exception: ', '');
+      setState(() {
+        _inlineError = cleanError.isEmpty
+            ? 'No se pudo completar la subida. Inténtalo nuevamente.'
+            : 'No se pudo completar la subida. $cleanError';
+      });
     } finally {
       if (mounted) {
         setState(() => _uploading = false);
@@ -170,10 +176,12 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
         child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               const Text(
                 'SUBIR DOCUMENTO',
                 style: TextStyle(
@@ -188,11 +196,19 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 label: 'TÍTULO DEL DOCUMENTO',
               ),
               const SizedBox(height: 8),
-              TextField(
+              TextFormField(
                 controller: _titleController,
                 decoration: repositoryInputDecoration(
                   hintText: 'Título',
                 ),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Ingresa el título del documento'
+                    : null,
+                onChanged: (_) {
+                  if (_inlineError != null) {
+                    setState(() => _inlineError = null);
+                  }
+                },
               ),
               const SizedBox(height: 12),
               const RepositoryFilterLabel(
@@ -290,11 +306,44 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                       : _file!.name,
                 ),
               ),
+              if (_inlineError != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.4),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: AppColors.error,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _inlineError!,
+                          style: const TextStyle(
+                            color: AppColors.error,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _uploading ? null : _submit,
+                  onPressed: _uploading || _file == null ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -308,7 +357,8 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                   label: const Text('ENVIAR A REVISIÓN'),
                 ),
               ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

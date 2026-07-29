@@ -145,7 +145,10 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
                   const SizedBox(height: 6),
                   if (document.description.isNotEmpty) ...[
                     Text(
-                      document.description,
+                      document.description.replaceAll(
+                        RegExp(r'(\*\*|_|\[|\]|\(.*?\))'),
+                        '',
+                      ),
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.muted, height: 1.4),
                       maxLines: 2,

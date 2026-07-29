@@ -467,30 +467,43 @@ class RepositoryActions {
     final path =
         '${user.id}/${DateTime.now().millisecondsSinceEpoch}_$safeName';
 
-    await supabase.storage.from('repositorio').uploadBinary(
-          path,
-          fileBytes,
-          fileOptions: FileOptions(
-            upsert: false,
-            contentType: _contentType(extension),
-          ),
-        );
+    var uploaded = false;
+    try {
+      await supabase.storage.from('repositorio').uploadBinary(
+            path,
+            fileBytes,
+            fileOptions: FileOptions(
+              upsert: false,
+              contentType: _contentType(extension),
+            ),
+          );
+      uploaded = true;
 
-    final url = supabase.storage.from('repositorio').getPublicUrl(path);
-    await supabase.from('publicaciones_repositorio').insert({
-      'titulo': input.title.trim(),
-      'descripcion': input.description.trim(),
-      'categoria': repositoryCategoryOptions.containsKey(input.category)
-          ? input.category
-          : repositoryCategoryOptions.keys.first,
-      'area_conocimiento': repositoryAreaOptions.containsKey(input.area)
-          ? input.area
-          : repositoryAreaOptions.keys.first,
-      'etiquetas': input.tags.take(4).toList(),
-      'urls_archivos': [url],
-      'id_autor': user.id,
-      'id_club': profile['id_club'],
-    });
+      final url = supabase.storage.from('repositorio').getPublicUrl(path);
+      await supabase.from('publicaciones_repositorio').insert({
+        'titulo': input.title.trim(),
+        'descripcion': input.description.trim(),
+        'categoria': repositoryCategoryOptions.containsKey(input.category)
+            ? input.category
+            : repositoryCategoryOptions.keys.first,
+        'area_conocimiento': repositoryAreaOptions.containsKey(input.area)
+            ? input.area
+            : repositoryAreaOptions.keys.first,
+        'etiquetas': input.tags.take(4).toList(),
+        'urls_archivos': [url],
+        'id_autor': user.id,
+        'id_club': profile['id_club'],
+      });
+    } catch (_) {
+      if (uploaded) {
+        try {
+          await supabase.storage.from('repositorio').remove([path]);
+        } catch (_) {
+          // Conserva el error original si tampoco se pudo limpiar el archivo.
+        }
+      }
+      throw Exception('Verifica tu conexión y vuelve a intentarlo.');
+    }
 
     await ref.read(appCacheServiceProvider).invalidatePrefix('repository:');
     ref.invalidate(repositoryDocumentsProvider);

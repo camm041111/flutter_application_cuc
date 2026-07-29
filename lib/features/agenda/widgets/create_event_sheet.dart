@@ -121,7 +121,11 @@ class _CreateEventSheetState extends ConsumerState<CreateEventSheet> {
     );
     if (value == null) return;
     setState(() {
-      if (start) _start = value; else _end = value;
+      if (start) {
+        _start = value;
+      } else {
+        _end = value;
+      }
       _inlineError = null;
     });
   }
