@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../explore/widgets/news_tag.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../providers/repository_providers.dart';
+import 'repository_file_download_tile.dart';
 
 class RepositoryDetailSheet extends ConsumerStatefulWidget {
   const RepositoryDetailSheet({super.key, required this.document});
@@ -103,12 +104,18 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                         ],
                       ),
                     ),
-                    if (doc.status.toLowerCase() != 'aprobado')
+                    if (doc.tags.isNotEmpty ||
+                        doc.status.toLowerCase() != 'aprobado')
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: _DetailStatusBadge(status: doc.status),
+                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ...doc.tags.map((tag) => NewsTag(label: tag)),
+                            if (doc.status.toLowerCase() != 'aprobado')
+                              _DetailStatusBadge(status: doc.status),
+                          ],
                         ),
                       ),
 
@@ -136,22 +143,18 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child:
                                   Divider(height: 1, color: AppColors.border)),
-                          Row(
-                            children: [
-                              Expanded(
-                                  child: _DataRow(
-                                      label: 'FECHA',
-                                      value: formatRepositoryDetailDate(
-                                          doc.createdAt),
-                                      isVertical: true)),
-                              Expanded(
-                                  child: _DataRow(
-                                      label: 'CATEGORÍA',
-                                      value: repositoryCategoryOptions[
-                                              doc.category] ??
-                                          doc.category,
-                                      isVertical: true)),
-                            ],
+                          _DataRow(
+                            label: 'FECHA',
+                            value: formatRepositoryDetailDate(doc.createdAt),
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            child: Divider(height: 1, color: AppColors.border),
+                          ),
+                          _DataRow(
+                            label: 'CATEGORÍA',
+                            value: repositoryCategoryOptions[doc.category] ??
+                                doc.category,
                           ),
                           if (doc.area.isNotEmpty) ...[
                             const Padding(
@@ -215,19 +218,43 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                         ),
                       ),
                     ),
-                    if (doc.tags.isNotEmpty) ...[
-                      const SizedBox(height: 24),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: doc.tags
-                              .map((tag) => NewsTag(label: tag))
-                              .toList(),
+                    const SizedBox(height: 28),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        'ARCHIVOS ADJUNTOS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                          color: AppColors.primary,
                         ),
                       ),
-                    ],
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: doc.downloadableFileUrls.isEmpty
+                          ? const Text(
+                              'Este documento no tiene archivos disponibles.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.muted,
+                              ),
+                            )
+                          : Column(
+                              children: [
+                                for (var index = 0;
+                                    index < doc.downloadableFileUrls.length;
+                                    index++) ...[
+                                  if (index > 0) const SizedBox(height: 8),
+                                  RepositoryFileDownloadTile(
+                                    fileUrl: doc.downloadableFileUrls[index],
+                                  ),
+                                ],
+                              ],
+                            ),
+                    ),
                   ],
                 ),
               ),
@@ -291,33 +318,12 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
 }
 
 class _DataRow extends StatelessWidget {
-  const _DataRow(
-      {required this.label, required this.value, this.isVertical = false});
+  const _DataRow({required this.label, required this.value});
   final String label;
   final String value;
-  final bool isVertical;
 
   @override
   Widget build(BuildContext context) {
-    if (isVertical) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
-                  color: AppColors.muted)),
-          const SizedBox(height: 4),
-          Text(value,
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.onSurface,
-                  fontWeight: FontWeight.w500)),
-        ],
-      );
-    }
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
