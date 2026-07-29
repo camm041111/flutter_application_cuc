@@ -19,6 +19,35 @@ class RepositoryDetailSheet extends ConsumerStatefulWidget {
 
 class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
   bool _reviewing = false;
+  bool _downloadingAll = false;
+
+  Future<void> _downloadAll() async {
+    if (_downloadingAll || widget.document.fileUrls.isEmpty) return;
+
+    setState(() => _downloadingAll = true);
+    try {
+      await Future.wait(
+        widget.document.fileUrls.map(downloadRepositoryFile),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${widget.document.fileUrls.length} archivos descargados.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudieron descargar todos los archivos: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _downloadingAll = false);
+    }
+  }
 
   Future<void> _review(bool isApproved) async {
     if (_reviewing) return;
@@ -243,7 +272,30 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                               ),
                             )
                           : Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
+                                OutlinedButton.icon(
+                                  onPressed:
+                                      _downloadingAll ? null : _downloadAll,
+                                  icon: _downloadingAll
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.download_for_offline_outlined,
+                                        ),
+                                  label: Text(
+                                    doc.fileUrls.length == 1
+                                        ? 'DESCARGAR ARCHIVO'
+                                        : 'DESCARGAR TODOS '
+                                            '(${doc.fileUrls.length})',
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
                                 for (var index = 0;
                                     index < doc.downloadableFileUrls.length;
                                     index++) ...[

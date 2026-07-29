@@ -33,15 +33,7 @@ class RepositoryFileDownloadTileState
 
     setState(() => _downloading = true);
     try {
-      final file = await _localFile();
-      if (!await file.exists()) {
-        final request = await HttpClient().getUrl(Uri.parse(widget.fileUrl));
-        final response = await request.close();
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          throw Exception('No se pudo descargar el archivo.');
-        }
-        await response.pipe(file.openWrite());
-      }
+      final file = await downloadRepositoryFile(widget.fileUrl);
 
       final result = await OpenFilex.open(file.path);
       if (result.type != ResultType.done && mounted) {
@@ -61,18 +53,6 @@ class RepositoryFileDownloadTileState
         setState(() => _downloading = false);
       }
     }
-  }
-
-  Future<File> _localFile() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final repositoryDirectory = Directory('${directory.path}/repositorio');
-    if (!await repositoryDirectory.exists()) {
-      await repositoryDirectory.create(recursive: true);
-    }
-
-    final safeName = _fileName.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
-    final urlPrefix = widget.fileUrl.hashCode.toUnsigned(32).toRadixString(16);
-    return File('${repositoryDirectory.path}/${urlPrefix}_$safeName');
   }
 
   @override
@@ -149,6 +129,28 @@ class RepositoryFileDownloadTileState
       ),
     );
   }
+}
+
+Future<File> downloadRepositoryFile(String fileUrl) async {
+  final directory = await getApplicationDocumentsDirectory();
+  final repositoryDirectory = Directory('${directory.path}/repositorio');
+  if (!await repositoryDirectory.exists()) {
+    await repositoryDirectory.create(recursive: true);
+  }
+
+  final fileName = repositoryFileNameFromUrl(fileUrl);
+  final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+  final urlPrefix = fileUrl.hashCode.toUnsigned(32).toRadixString(16);
+  final file = File('${repositoryDirectory.path}/${urlPrefix}_$safeName');
+  if (await file.exists()) return file;
+
+  final request = await HttpClient().getUrl(Uri.parse(fileUrl));
+  final response = await request.close();
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception('No se pudo descargar "$fileName".');
+  }
+  await response.pipe(file.openWrite());
+  return file;
 }
 
 String repositoryFileNameFromUrl(String url) {
