@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../explore/widgets/news_tag.dart';
@@ -22,21 +23,29 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
   bool _downloadingAll = false;
 
   Future<void> _downloadAll() async {
-    if (_downloadingAll || widget.document.fileUrls.isEmpty) return;
+    final urls = widget.document.fileUrls;
+    if (_downloadingAll || urls.isEmpty) return;
 
     setState(() => _downloadingAll = true);
     try {
-      await Future.wait(
-        widget.document.fileUrls.map(downloadRepositoryFile),
+      // 1. Descargamos los binarios concurrentemente a la caché segura
+      final downloadedFiles = await Future.wait(urls.map(downloadRepositoryFile));
+
+      // 2. Mapeamos a XFile, el estándar transversal exigido por share_plus
+      final xFiles = downloadedFiles.map((file) => XFile(file.path)).toList();
+
+      // 3. Delegamos el manejo de los binarios al Share Sheet nativo
+      final result = await Share.shareXFiles(
+        xFiles,
+        subject: widget.document.title,
+        text: 'Anexos del documento: ${widget.document.title}',
       );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${widget.document.fileUrls.length} archivos descargados.',
-          ),
-        ),
-      );
+
+      if (result.status == ShareResultStatus.success && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Archivos procesados correctamente.')),
+        );
+      }
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -73,7 +82,7 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
     final doc = widget.document;
     final canReview = profileAsync.maybeWhen(
       data: (profile) =>
-          doc.status.toLowerCase() == 'pendiente' &&
+      doc.status.toLowerCase() == 'pendiente' &&
           profile != null &&
           (profile.rol == 'coordinador' || profile.rol == 'lider') &&
           profile.clubId == doc.clubId,
@@ -97,7 +106,6 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                   controller: scrollController,
                   padding: const EdgeInsets.only(bottom: 24),
                   children: [
-                    // Header handle
                     Center(
                       child: Container(
                         margin: const EdgeInsets.only(top: 12, bottom: 16),
@@ -147,10 +155,7 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                           ],
                         ),
                       ),
-
                     const SizedBox(height: 24),
-
-                    // 🛡️ FICHA BIBLIOGRÁFICA (Grid de Metadatos Científicos)
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 20),
                       padding: const EdgeInsets.all(16),
@@ -166,12 +171,12 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                           const Padding(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child:
-                                  Divider(height: 1, color: AppColors.border)),
+                              Divider(height: 1, color: AppColors.border)),
                           _DataRow(label: 'CLUB ASOCIADO', value: doc.clubName),
                           const Padding(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child:
-                                  Divider(height: 1, color: AppColors.border)),
+                              Divider(height: 1, color: AppColors.border)),
                           _DataRow(
                             label: 'FECHA',
                             value: formatRepositoryDetailDate(doc.createdAt),
@@ -198,7 +203,6 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 24),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20),
@@ -265,47 +269,70 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: doc.downloadableFileUrls.isEmpty
                           ? const Text(
-                              'Este documento no tiene archivos disponibles.',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.muted,
-                              ),
-                            )
+                        'Este documento no tiene archivos disponibles.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.muted,
+                        ),
+                      )
                           : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                OutlinedButton.icon(
-                                  onPressed:
-                                      _downloadingAll ? null : _downloadAll,
-                                  icon: _downloadingAll
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : const Icon(
-                                          Icons.download_for_offline_outlined,
-                                        ),
-                                  label: Text(
-                                    doc.fileUrls.length == 1
-                                        ? 'DESCARGAR ARCHIVO'
-                                        : 'DESCARGAR TODOS '
-                                            '(${doc.fileUrls.length})',
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: FractionallySizedBox(
+                              widthFactor: 0.5,
+                              child: ElevatedButton.icon(
+                                onPressed:
+                                _downloadingAll ? null : _downloadAll,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: AppColors.background,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 9,
+                                  ),
+                                  minimumSize: const Size(0, 38),
+                                ),
+                                icon: _downloadingAll
+                                    ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: AppColors.background,
+                                  ),
+                                )
+                                    : const Icon(
+                                  Icons.download_rounded,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  doc.fileUrls.length == 1
+                                      ? 'DESCARGAR'
+                                      : 'DESCARGAR TODOS',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
-                                for (var index = 0;
-                                    index < doc.downloadableFileUrls.length;
-                                    index++) ...[
-                                  if (index > 0) const SizedBox(height: 8),
-                                  RepositoryFileDownloadTile(
-                                    fileUrl: doc.downloadableFileUrls[index],
-                                  ),
-                                ],
-                              ],
+                              ),
                             ),
+                          ),
+                          const SizedBox(height: 10),
+                          for (var index = 0;
+                          index < doc.downloadableFileUrls.length;
+                          index++) ...[
+                            if (index > 0) const SizedBox(height: 8),
+                            RepositoryFileDownloadTile(
+                              fileUrl: doc.downloadableFileUrls[index],
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -346,15 +373,15 @@ class RepositoryDetailSheetState extends ConsumerState<RepositoryDetailSheet> {
                             ),
                             child: _reviewing
                                 ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2.5,
-                                        color: AppColors.background))
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2.5,
+                                    color: AppColors.background))
                                 : const Text('APROBAR PUBLICACIÓN',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        letterSpacing: 0.5)),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5)),
                           ),
                         ),
                       ],

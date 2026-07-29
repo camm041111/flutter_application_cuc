@@ -108,21 +108,25 @@ class RepositoryFileDownloadTileState
             ),
           ),
           const SizedBox(width: 10),
-          OutlinedButton.icon(
+          IconButton(
+            tooltip: 'Descargar',
             onPressed: _downloading ? null : _downloadOrOpen,
             icon: _downloading
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
                   )
-                : const Icon(Icons.download_rounded, size: 17),
-            label: const Text('DESCARGAR'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
+                : const Icon(
+                    Icons.download_rounded,
+                    size: 21,
+                    color: AppColors.primary,
+                  ),
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.primary,
             ),
           ),
         ],
@@ -132,11 +136,7 @@ class RepositoryFileDownloadTileState
 }
 
 Future<File> downloadRepositoryFile(String fileUrl) async {
-  final directory = await getApplicationDocumentsDirectory();
-  final repositoryDirectory = Directory('${directory.path}/repositorio');
-  if (!await repositoryDirectory.exists()) {
-    await repositoryDirectory.create(recursive: true);
-  }
+  final repositoryDirectory = await repositoryDownloadDirectory();
 
   final fileName = repositoryFileNameFromUrl(fileUrl);
   final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
@@ -151,6 +151,22 @@ Future<File> downloadRepositoryFile(String fileUrl) async {
   }
   await response.pipe(file.openWrite());
   return file;
+}
+
+Future<Directory> repositoryDownloadDirectory() async {
+  Directory? downloadsDirectory;
+  try {
+    downloadsDirectory = await getDownloadsDirectory();
+  } catch (_) {
+    // Algunas plataformas no exponen una carpeta pública de descargas.
+  }
+  final baseDirectory =
+      downloadsDirectory ?? await getApplicationDocumentsDirectory();
+  final repositoryDirectory = Directory('${baseDirectory.path}/repositorio');
+  if (!await repositoryDirectory.exists()) {
+    await repositoryDirectory.create(recursive: true);
+  }
+  return repositoryDirectory;
 }
 
 String repositoryFileNameFromUrl(String url) {
