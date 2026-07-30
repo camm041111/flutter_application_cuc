@@ -7,19 +7,74 @@ class ProfileRankCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border.all(color: AppColors.border),
-        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.75),
+        ),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Text('Top 5%', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: AppColors.onBackground)),
-          SizedBox(height: 2),
-          Text('EN CONTRIBUCIONES', style: TextStyle(fontSize: 11, color: AppColors.muted, letterSpacing: 0.8)),
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.leaderboard_outlined,
+              color: AppColors.primary,
+              size: 23,
+            ),
+          ),
+          const SizedBox(width: 16),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Top 5%',
+                  style: TextStyle(
+                    fontSize: 27,
+                    height: 1,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.onBackground,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                SizedBox(height: 7),
+                Text(
+                  'RANGO EN CONTRIBUCIONES',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text(
+              'ÉLITE',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ),
         ],
       ),
     );
