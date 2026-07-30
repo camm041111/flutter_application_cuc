@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/cuc_pill_tab_bar.dart';
 import '../providers/repository_providers.dart';
 import '../widgets/repository_document_card.dart';
 import '../widgets/repository_upload_sheet.dart';
@@ -18,20 +19,8 @@ class MyContributionsScreen extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('MIS APORTACIONES'),
-          bottom: const TabBar(
-            indicatorColor: AppColors.primary,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.muted,
-            labelStyle: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 0.8,
-            ),
-            tabs: [
-              Tab(text: 'APROBADOS'),
-              Tab(text: 'EN REVISIÓN'),
-              Tab(text: 'RECHAZADOS'),
-            ],
+          bottom: const CucPillTabBar(
+            labels: ['APROBADOS', 'EN REVISIÓN', 'RECHAZADOS'],
           ),
         ),
         body: documentsAsync.when(
@@ -154,9 +143,7 @@ class _ContributionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: accent.withValues(alpha: isRejected ? 0.65 : 0.25),
-        ),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/cuc_app_bar.dart';
+import '../../../core/widgets/cuc_pill_tab_bar.dart';
 import '../providers/coordinator_providers.dart';
 
 class CoordinatorPanelScreen extends ConsumerWidget {
@@ -14,42 +15,52 @@ class CoordinatorPanelScreen extends ConsumerWidget {
     return const DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: AppColors.background,
         appBar: CucAppBar(),
-        body: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: EdgeInsets.fromLTRB(18, 24, 18, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Panel de Gestión',
-                      style:
-                          TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-                  SizedBox(height: 4),
-                  Text('Aprobación para líderes y coordinadores',
-                      style: TextStyle(fontSize: 13, color: AppColors.primary)),
-                ],
+        body: ColoredBox(
+          color: AppColors.background,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, 26, 20, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Panel de Gestión',
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Aprobación para líderes y coordinadores',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.muted,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            TabBar(
-              indicatorColor: AppColors.primary,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.muted,
-              tabs: [
-                Tab(text: 'MIEMBROS'),
-                Tab(text: 'DOCUMENTOS'),
-              ],
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  _MembersManagementTab(),
-                  _PendingDocumentsTab(),
-                ],
+              CucPillTabBar(
+                labels: ['MIEMBROS', 'DOCUMENTOS'],
               ),
-            ),
-          ],
+              SizedBox(height: 8),
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _MembersManagementTab(),
+                    _PendingDocumentsTab(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -96,9 +107,11 @@ class _MembersManagementTab extends ConsumerWidget {
             if (users.isEmpty) {
               return const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: Text('No hay solicitudes pendientes.',
-                      style: TextStyle(color: AppColors.muted)),
+                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  child: _EmptyPanelMessage(
+                    icon: Icons.person_add_alt_1_outlined,
+                    text: 'No hay solicitudes pendientes.',
+                  ),
                 ),
               );
             }
@@ -114,10 +127,28 @@ class _MembersManagementTab extends ConsumerWidget {
                       title: user['nombre_completo'],
                       subtitle: 'Matrícula: ${user['matricula']}',
                       actions: [
-                        IconButton(
-                          tooltip: 'Aprobar Ingreso',
-                          icon: const Icon(Icons.check_circle,
-                              color: AppColors.primary),
+                        FilledButton.tonalIcon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor:
+                                AppColors.primary.withValues(alpha: 0.14),
+                            foregroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.check_rounded, size: 17),
+                          label: const Text(
+                            'APROBAR',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
                           onPressed: () async {
                             final success =
                                 await CoordinatorActions.approveMember(
@@ -166,9 +197,11 @@ class _MembersManagementTab extends ConsumerWidget {
             if (users.isEmpty) {
               return const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                  child: Text('No hay otros miembros activos.',
-                      style: TextStyle(color: AppColors.muted)),
+                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  child: _EmptyPanelMessage(
+                    icon: Icons.groups_outlined,
+                    text: 'No hay otros miembros activos.',
+                  ),
                 ),
               );
             }
@@ -193,6 +226,13 @@ class _MembersManagementTab extends ConsumerWidget {
                             icon: const Icon(Icons.more_vert,
                                 color: AppColors.muted),
                             color: AppColors.surface,
+                            elevation: 12,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(
+                                color: AppColors.border.withValues(alpha: 0.5),
+                              ),
+                            ),
                             onSelected: (value) async {
                               bool success = false;
                               String msg = '';
@@ -222,25 +262,75 @@ class _MembersManagementTab extends ConsumerWidget {
                               if (!isLeader)
                                 const PopupMenuItem(
                                   value: 'ascender_lider',
-                                  child: Text('Ascender a Líder',
-                                      style:
-                                          TextStyle(color: AppColors.primary)),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.trending_up_rounded,
+                                        color: AppColors.primary,
+                                        size: 19,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'Ascender a Líder',
+                                        style:
+                                            TextStyle(color: AppColors.primary),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               if (isLeader)
                                 const PopupMenuItem(
                                   value: 'degradar_miembro',
-                                  child: Text('Degradar a Miembro',
-                                      style: TextStyle(color: AppColors.error)),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.person_remove_outlined,
+                                        color: AppColors.error,
+                                        size: 19,
+                                      ),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'Degradar a Miembro',
+                                        style:
+                                            TextStyle(color: AppColors.error),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               const PopupMenuDivider(),
                               const PopupMenuItem(
                                 value: 'estado_inactivo',
-                                child: Text('Marcar Inactivo (Egreso)'),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.pause_circle_outline,
+                                      color: AppColors.muted,
+                                      size: 19,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text('Marcar Inactivo (Egreso)'),
+                                  ],
+                                ),
                               ),
                               const PopupMenuItem(
                                 value: 'estado_baja',
-                                child: Text('Dar de Baja (Expulsión)',
-                                    style: TextStyle(color: AppColors.error)),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.warning_amber_rounded,
+                                      color: AppColors.error,
+                                      size: 21,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Dar de Baja (Expulsión)',
+                                      style: TextStyle(
+                                        color: AppColors.error,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -287,10 +377,10 @@ class _MembersManagementTab extends ConsumerWidget {
             if (users.isEmpty) {
               return const SliverToBoxAdapter(
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 10, 20, 24),
-                  child: Text(
-                    'No hay miembros inactivos o dados de baja.',
-                    style: TextStyle(color: AppColors.muted),
+                  padding: EdgeInsets.fromLTRB(18, 8, 18, 24),
+                  child: _EmptyPanelMessage(
+                    icon: Icons.history_rounded,
+                    text: 'No hay miembros inactivos o dados de baja.',
                   ),
                 ),
               );
@@ -316,6 +406,13 @@ class _MembersManagementTab extends ConsumerWidget {
                             color: AppColors.muted,
                           ),
                           color: AppColors.surface,
+                          elevation: 12,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: BorderSide(
+                              color: AppColors.border.withValues(alpha: 0.5),
+                            ),
+                          ),
                           onSelected: (value) async {
                             if (value != 'restaurar') return;
 
@@ -336,9 +433,19 @@ class _MembersManagementTab extends ConsumerWidget {
                           itemBuilder: (context) => const [
                             PopupMenuItem(
                               value: 'restaurar',
-                              child: Text(
-                                'Restaurar a Miembro Activo',
-                                style: TextStyle(color: AppColors.primary),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.restore_rounded,
+                                    color: AppColors.primary,
+                                    size: 19,
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Restaurar a Miembro Activo',
+                                    style: TextStyle(color: AppColors.primary),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -367,15 +474,26 @@ class _PendingDocumentsTab extends ConsumerWidget {
 
     return pendingAsync.when(
       loading: () => const Center(
-          child: CircularProgressIndicator(color: AppColors.primary)),
-      error: (e, s) => Center(child: Text('Error: $e')),
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+      error: (e, s) => _EmptyPanelMessage(
+        icon: Icons.cloud_off_outlined,
+        text: 'No se pudieron cargar los documentos.\n$e',
+        isError: true,
+      ),
       data: (docs) {
         if (docs.isEmpty) {
-          return const _EmptyPanelMessage(text: 'Sin documentos pendientes.');
+          return const Padding(
+            padding: EdgeInsets.all(18),
+            child: _EmptyPanelMessage(
+              icon: Icons.task_alt_rounded,
+              text: 'No hay documentos pendientes de revisión.',
+            ),
+          );
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 28),
           itemCount: docs.length,
           separatorBuilder: (_, __) => const SizedBox(height: 12),
           itemBuilder: (context, index) {
@@ -385,15 +503,50 @@ class _PendingDocumentsTab extends ConsumerWidget {
               title: doc.title,
               subtitle: '${doc.category} · ${doc.authorName}',
               actions: [
-                IconButton(
-                  tooltip: 'Rechazar documento',
-                  icon: const Icon(Icons.cancel, color: AppColors.error),
+                FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.error.withValues(alpha: 0.14),
+                    foregroundColor: AppColors.error,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.close_rounded, size: 17),
+                  label: const Text(
+                    'RECHAZAR',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
                   onPressed: () => _showRejectDialog(context, ref, doc),
                 ),
-                IconButton(
-                  tooltip: 'Aprobar documento',
-                  icon:
-                      const Icon(Icons.check_circle, color: AppColors.primary),
+                FilledButton.tonalIcon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.14),
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 13,
+                      vertical: 10,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.check_rounded, size: 17),
+                  label: const Text(
+                    'APROBAR',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
                   onPressed: () async {
                     final success = await CoordinatorActions.reviewDocument(
                       ref,
@@ -428,8 +581,26 @@ Future<void> _showRejectDialog(
       builder: (context, setState) {
         return AlertDialog(
           backgroundColor: AppColors.surface,
-          title: const Text('Rechazar Documento',
-              style: TextStyle(color: AppColors.error)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(
+              color: AppColors.border.withValues(alpha: 0.5),
+            ),
+          ),
+          title: const Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: AppColors.error,
+                size: 23,
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Rechazar Documento',
+                style: TextStyle(color: AppColors.error),
+              ),
+            ],
+          ),
           content: Form(
             key: formKey,
             child: Column(
@@ -448,7 +619,8 @@ Future<void> _showRejectDialog(
                     filled: true,
                     fillColor: AppColors.background,
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   validator: (value) =>
                       value == null || value.trim().length < 10
@@ -467,8 +639,12 @@ Future<void> _showRejectDialog(
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                  foregroundColor: Colors.white),
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               onPressed: isSubmitting
                   ? null
                   : () async {
@@ -522,34 +698,82 @@ class _ManagementTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.5),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.14),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          CircleAvatar(
-            backgroundColor: AppColors.surfaceVariant,
-            child: Icon(icon, color: AppColors.primary),
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: AppColors.primary, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis),
-                Text(subtitle,
-                    style:
-                        const TextStyle(fontSize: 12, color: AppColors.muted),
-                    overflow: TextOverflow.ellipsis),
-              ],
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Divider(
+              color: AppColors.border.withValues(alpha: 0.45),
             ),
-          ),
-          ...actions,
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: actions,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -557,14 +781,53 @@ class _ManagementTile extends StatelessWidget {
 }
 
 class _EmptyPanelMessage extends StatelessWidget {
-  const _EmptyPanelMessage({required this.text});
+  const _EmptyPanelMessage({
+    required this.icon,
+    required this.text,
+    this.isError = false,
+  });
 
+  final IconData icon;
   final String text;
+  final bool isError;
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(text, style: const TextStyle(color: AppColors.muted)),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 520),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 30),
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: (isError ? AppColors.error : AppColors.border)
+                .withValues(alpha: isError ? 0.35 : 0.45),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 48,
+              color: isError ? AppColors.error : AppColors.muted,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isError ? AppColors.error : AppColors.muted,
+                fontSize: 13,
+                height: 1.45,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

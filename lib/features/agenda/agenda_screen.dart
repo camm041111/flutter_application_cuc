@@ -32,6 +32,7 @@ class AgendaScreen extends ConsumerWidget {
       appBar: const CucAppBar(),
       body: Column(
         children: [
+          const SizedBox(height: 16),
           FilterTabs(
             showFuture: showFuture,
             onChanged: (value) => ref
@@ -41,7 +42,9 @@ class AgendaScreen extends ConsumerWidget {
           Expanded(
             child: RefreshIndicator(
               onRefresh: () async {
-                await ref.read(appCacheServiceProvider).invalidatePrefix('events:');
+                await ref
+                    .read(appCacheServiceProvider)
+                    .invalidatePrefix('events:');
                 ref.invalidate(eventsProvider);
               },
               child: eventsAsync.when(
@@ -63,11 +66,11 @@ class AgendaScreen extends ConsumerWidget {
       floatingActionButton: canManageAsync.maybeWhen(
         data: (canManage) => canManage
             ? FloatingActionButton(
-          onPressed: () => _openCreateEventSheet(context),
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.background,
-          child: const Icon(Icons.add),
-        )
+                onPressed: () => _openCreateEventSheet(context),
+                backgroundColor: AppColors.primary,
+                foregroundColor: AppColors.background,
+                child: const Icon(Icons.add),
+              )
             : null,
         orElse: () => null,
       ),
