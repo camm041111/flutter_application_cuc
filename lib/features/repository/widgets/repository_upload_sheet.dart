@@ -281,9 +281,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 ),
                 TextField(
                   controller: _descriptionController,
-                  minLines: 8,
-                  maxLines: 12,
-                  maxLength: 250,
+                  minLines: 6,
+                  maxLines: 15,
+                  maxLength: 1000,
                   decoration: repositoryInputDecoration(
                     hintText: 'Descripción breve',
                   ),
