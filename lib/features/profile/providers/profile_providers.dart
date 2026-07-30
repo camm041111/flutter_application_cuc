@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../core/cache/app_cache_service.dart';
 import '../../../core/providers/supabase_provider.dart';
 
@@ -65,8 +67,73 @@ class UserProfile {
   }
 }
 
+class RecentPost {
+  const RecentPost({
+    required this.id,
+    required this.titulo,
+    required this.categoria,
+  });
+
+  final String id;
+  final String titulo;
+  final String categoria;
+
+  factory RecentPost.fromJson(Map<String, dynamic> json) {
+    return RecentPost(
+      id: (json['id'] ?? '').toString(),
+      titulo: (json['titulo'] ?? 'Sin título').toString(),
+      categoria: (json['categoria'] ?? '').toString(),
+    );
+  }
+}
+
+final profileActionsProvider = Provider<ProfileActions>((ref) {
+  return ProfileActions(ref);
+});
+
+class ProfileActions {
+  ProfileActions(this.ref);
+
+  final Ref ref;
+
+  Future<void> uploadAvatar(UserProfile profile, XFile image) async {
+    final bytes = await image.readAsBytes();
+    const maxBytes = 10 * 1024 * 1024;
+    if (bytes.length > maxBytes) {
+      throw Exception('La imagen no puede superar 10MB.');
+    }
+
+    final extension = image.name.split('.').last.toLowerCase();
+    final safeExtension =
+        extension == 'png' || extension == 'webp' ? extension : 'jpg';
+    final contentType =
+        safeExtension == 'jpg' ? 'image/jpeg' : 'image/$safeExtension';
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final path = '${profile.id}/avatar_$timestamp.$safeExtension';
+    final supabase = ref.read(supabaseClientProvider);
+
+    await supabase.storage.from('avatars').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: contentType,
+          ),
+        );
+
+    final publicUrl = supabase.storage.from('avatars').getPublicUrl(path);
+    await supabase
+        .from('perfiles')
+        .update({'url_avatar': publicUrl}).eq('id', profile.id);
+
+    await ref.read(appCacheServiceProvider).invalidate('profile:${profile.id}');
+    ref.invalidate(profileProvider(profile.id));
+  }
+}
+
 // 2. Actualizamos el Provider
-final profileProvider = FutureProvider.family<UserProfile, String>((ref, userId) async {
+final profileProvider =
+    FutureProvider.family<UserProfile, String>((ref, userId) async {
   final cache = ref.read(appCacheServiceProvider);
   final supabase = ref.read(supabaseClientProvider);
 
@@ -84,14 +151,16 @@ final profileProvider = FutureProvider.family<UserProfile, String>((ref, userId)
 
       return UserProfile.fromJson(response);
     },
-    fromJson: (json) => UserProfile.fromJson(Map<String, dynamic>.from(json as Map)),
+    fromJson: (json) =>
+        UserProfile.fromJson(Map<String, dynamic>.from(json as Map)),
     toJson: (profile) => profile.toJson(),
     persistent: false,
   );
 });
 
 // 3. Provider del Heatmap (Consume el RPC)
-final heatmapProvider = FutureProvider.family<Map<DateTime, int>, String>((ref, userId) async {
+final heatmapProvider =
+    FutureProvider.family<Map<DateTime, int>, String>((ref, userId) async {
   final supabase = ref.read(supabaseClientProvider);
 
   late final List<dynamic> response;
@@ -109,7 +178,7 @@ final heatmapProvider = FutureProvider.family<Map<DateTime, int>, String>((ref, 
         .gte(
           'fecha_creacion',
           DateTime.now()
-              .subtract(const Duration(days: 26 * 7))
+              .subtract(const Duration(days: 13 * 7))
               .toIso8601String(),
         );
     return _heatmapFromActivityLogs(response);
@@ -143,7 +212,9 @@ Map<DateTime, int> _heatmapFromActivityLogs(List<dynamic> rows) {
 
 // 4. Provider de Métricas (Lazy Load: Solo carga si el recuadro es visible/requerido)
 // Usamos un Record ({int publicaciones, int foro}) para tipar el retorno.
-final statsProvider = FutureProvider.family<({int publicaciones, int foro}), String>((ref, userId) async {
+final statsProvider =
+    FutureProvider.family<({int publicaciones, int foro}), String>(
+        (ref, userId) async {
   final supabase = ref.read(supabaseClientProvider);
 
   // Rendimiento: Ejecutamos las consultas en paralelo con Future.wait
@@ -155,33 +226,40 @@ final statsProvider = FutureProvider.family<({int publicaciones, int foro}), Str
         .eq('id_autor', userId)
         .eq('estado', 'aprobado'), // Solo contamos documentos oficiales
 
-    supabase
-        .from('preguntas_foro')
-        .select('id')
-        .eq('id_autor', userId),
+    supabase.from('preguntas_foro').select('id').eq('id_autor', userId),
   ]);
 
   return (
-  publicaciones: results[0].length,
-  foro: results[1].length,
+    publicaciones: results[0].length,
+    foro: results[1].length,
   );
 });
 
 // 5. Provider de Publicaciones Recientes (Top 3)
-final recentPostsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, userId) async {
+final recentPostsProvider =
+    FutureProvider.family<List<RecentPost>, String>((ref, userId) async {
   final supabase = ref.read(supabaseClientProvider);
 
   // Rendimiento: Traemos estrictamente los campos que la UI necesita renderizar
-  return await supabase
+  final response = await supabase
       .from('publicaciones_repositorio')
       .select('id, titulo, categoria')
       .eq('id_autor', userId)
       .eq('estado', 'aprobado')
       .order('fecha_creacion', ascending: false)
       .limit(3); // Candado de seguridad para no desbordar la UI
+
+  return (response as List<dynamic>)
+      .map(
+        (item) => RecentPost.fromJson(
+          Map<String, dynamic>.from(item as Map),
+        ),
+      )
+      .toList(growable: false);
 });
 // 6. Provider del Usuario Actual (Puente para la UI)
-final currentUserProfileProvider = FutureProvider.autoDispose<UserProfile?>((ref) async {
+final currentUserProfileProvider =
+    FutureProvider.autoDispose<UserProfile?>((ref) async {
   final supabase = ref.read(supabaseClientProvider);
   final user = supabase.auth.currentUser;
 
