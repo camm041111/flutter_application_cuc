@@ -41,9 +41,6 @@ class ClubHeader extends ConsumerWidget {
           ),
         ),
         data: (club) {
-          final acronimo =
-              club['divisiones_academicas']?['acronimo'] ?? 'Desconocida';
-
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -58,15 +55,12 @@ class ClubHeader extends ConsumerWidget {
                     color: AppColors.primary.withValues(alpha: 0.65),
                     width: 2,
                   ),
-                  image: club['url_logo'] != null &&
-                          club['url_logo'].toString().isNotEmpty
+                  image: club.urlLogo != null
                       ? DecorationImage(
-                          image: NetworkImage(club['url_logo']),
-                          fit: BoxFit.cover)
+                          image: NetworkImage(club.urlLogo!), fit: BoxFit.cover)
                       : null,
                 ),
-                child: club['url_logo'] == null ||
-                        club['url_logo'].toString().isEmpty
+                child: club.urlLogo == null
                     ? const Icon(
                         Icons.science_outlined,
                         color: AppColors.primary,
@@ -81,7 +75,7 @@ class ClubHeader extends ConsumerWidget {
                   children: [
                     // Nombre oficial del club
                     Text(
-                      club['nombre'].toString(),
+                      club.nombre,
                       style: const TextStyle(
                         fontSize: 19,
                         fontWeight: FontWeight.w800,
@@ -104,7 +98,7 @@ class ClubHeader extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        acronimo.toString().toUpperCase(),
+                        club.acronimoDivision.toUpperCase(),
                         style: const TextStyle(
                           fontSize: 9,
                           color: AppColors.background,
@@ -116,7 +110,9 @@ class ClubHeader extends ConsumerWidget {
                     const SizedBox(height: 9),
                     // Descripción del enfoque de investigación
                     Text(
-                      club['descripcion'] ?? 'Sin descripción disponible.',
+                      club.descripcion.isEmpty
+                          ? 'Sin descripción disponible.'
+                          : club.descripcion,
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.muted,

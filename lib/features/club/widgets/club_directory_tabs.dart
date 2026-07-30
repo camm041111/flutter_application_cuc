@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../profile/profile_screen.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../providers/club_providers.dart';
 
 class ClubDirectoryTabs extends ConsumerWidget {
@@ -11,6 +12,14 @@ class ClubDirectoryTabs extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final directoryAsync = ref.watch(clubDirectoryProvider(clubId));
+    final currentProfileAsync = ref.watch(currentUserProfileProvider);
+    final canViewHistory = currentProfileAsync.maybeWhen(
+      data: (profile) =>
+          profile != null &&
+          profile.clubId == clubId &&
+          (profile.rol == 'coordinador' || profile.rol == 'lider'),
+      orElse: () => false,
+    );
 
     return directoryAsync.when(
       loading: () => const Center(
@@ -40,7 +49,11 @@ class ClubDirectoryTabs extends ConsumerWidget {
             // Pestaña 1: Activos
             _MemberList(members: directory.activos),
             // Pestaña 2: Bajas / Histórico
-            _MemberList(members: directory.historico, isHistorical: true),
+            if (canViewHistory)
+              _MemberList(
+                members: directory.historico,
+                isHistorical: true,
+              ),
           ],
         );
       },
@@ -49,7 +62,7 @@ class ClubDirectoryTabs extends ConsumerWidget {
 }
 
 class _MemberList extends StatelessWidget {
-  final List<dynamic> members;
+  final List<ClubMember> members;
   final bool isHistorical;
 
   const _MemberList({required this.members, this.isHistorical = false});
@@ -87,7 +100,7 @@ class _MemberList extends StatelessWidget {
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final user = members[index];
-        final isCoordinator = user['rol'] == 'coordinador';
+        final isCoordinator = user.rol == 'coordinador';
 
         return Container(
           decoration: BoxDecoration(
@@ -114,10 +127,10 @@ class _MemberList extends StatelessWidget {
               child: CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                backgroundImage: user['url_avatar'] != null
-                    ? NetworkImage(user['url_avatar'])
+                backgroundImage: user.urlAvatar != null
+                    ? NetworkImage(user.urlAvatar!)
                     : null,
-                child: user['url_avatar'] == null
+                child: user.urlAvatar == null
                     ? const Icon(
                         Icons.person_outline,
                         color: AppColors.primary,
@@ -127,7 +140,7 @@ class _MemberList extends StatelessWidget {
               ),
             ),
             title: Text(
-              user['nombre_completo'],
+              user.nombreCompleto,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -181,13 +194,10 @@ class _MemberList extends StatelessWidget {
               ),
             ),
             onTap: () {
-              final userId = user['id'] as String?;
-              if (userId == null) return;
-
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => ProfileScreen(userId: userId),
+                  builder: (_) => ProfileScreen(userId: user.id),
                 ),
               );
             },

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/cuc_app_bar.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../widgets/club_header.dart';
 import '../widgets/club_metrics_row.dart';
 import '../widgets/club_heatmap_section.dart';
@@ -14,8 +15,17 @@ class ClubProfileScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentProfileAsync = ref.watch(currentUserProfileProvider);
+    final canViewHistory = currentProfileAsync.maybeWhen(
+      data: (profile) =>
+          profile != null &&
+          profile.clubId == clubId &&
+          (profile.rol == 'coordinador' || profile.rol == 'lider'),
+      orElse: () => false,
+    );
+
     return DefaultTabController(
-      length: 2, // Activos | Histórico
+      length: canViewHistory ? 2 : 1,
       child: Scaffold(
         backgroundColor: AppColors.background,
         appBar: const CucAppBar(),
@@ -58,9 +68,9 @@ class ClubProfileScreen extends ConsumerWidget {
                       fontWeight: FontWeight.w600,
                       letterSpacing: 1.1,
                     ),
-                    tabs: const [
-                      Tab(text: 'MIEMBROS ACTIVOS'),
-                      Tab(text: 'HISTÓRICO'),
+                    tabs: [
+                      const Tab(text: 'MIEMBROS ACTIVOS'),
+                      if (canViewHistory) const Tab(text: 'HISTÓRICO'),
                     ],
                   ),
                 ),
