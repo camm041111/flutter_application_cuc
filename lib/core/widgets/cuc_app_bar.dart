@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 
@@ -77,9 +79,10 @@ class CucAppBar extends ConsumerWidget implements PreferredSizeWidget {
           color: Colors.white,
         ),
         IconButton(
-          onPressed: () {},
-          icon: const Icon(Icons.account_circle_outlined),
-          color: Colors.white,
+          tooltip: 'Cerrar sesión',
+          onPressed: () => _confirmLogout(context, ref),
+          icon: const Icon(Icons.logout_rounded),
+          color: AppColors.error,
         ),
         const SizedBox(width: 4),
       ],
@@ -101,6 +104,50 @@ class CucAppBar extends ConsumerWidget implements PreferredSizeWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => const _NotificationsSheet(),
     );
+  }
+
+  Future<void> _confirmLogout(BuildContext context, WidgetRef ref) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(
+          Icons.logout_rounded,
+          color: AppColors.error,
+        ),
+        title: const Text('Cerrar sesión'),
+        content: const Text(
+          'Tu sesión actual se cerrará y tendrás que identificarte '
+          'nuevamente para acceder. ¿Deseas continuar?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Cerrar sesión',
+              style: TextStyle(
+                color: AppColors.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout != true || !context.mounted) return;
+
+    try {
+      await ref.read(authServiceProvider).cerrarSesion();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo cerrar sesión: $error')),
+      );
+    }
   }
 }
 

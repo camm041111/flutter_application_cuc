@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../profile/profile_screen.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../providers/club_providers.dart';
 
 class ClubDirectoryTabs extends ConsumerWidget {
@@ -11,17 +12,48 @@ class ClubDirectoryTabs extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final directoryAsync = ref.watch(clubDirectoryProvider(clubId));
+    final currentProfileAsync = ref.watch(currentUserProfileProvider);
+    final canViewHistory = currentProfileAsync.maybeWhen(
+      data: (profile) =>
+          profile != null &&
+          profile.clubId == clubId &&
+          (profile.rol == 'coordinador' || profile.rol == 'lider'),
+      orElse: () => false,
+    );
 
     return directoryAsync.when(
-      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      error: (e, s) => const Center(child: Text('Error al cargar directorio', style: TextStyle(color: AppColors.muted))),
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+      error: (e, s) => Center(
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: const Text(
+            'Error al cargar directorio',
+            style: TextStyle(
+              color: AppColors.muted,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
       data: (directory) {
         return TabBarView(
           children: [
             // Pestaña 1: Activos
             _MemberList(members: directory.activos),
             // Pestaña 2: Bajas / Histórico
-            _MemberList(members: directory.historico, isHistorical: true),
+            if (canViewHistory)
+              _MemberList(
+                members: directory.historico,
+                isHistorical: true,
+              ),
           ],
         );
       },
@@ -30,7 +62,7 @@ class ClubDirectoryTabs extends ConsumerWidget {
 }
 
 class _MemberList extends StatelessWidget {
-  final List<dynamic> members;
+  final List<ClubMember> members;
   final bool isHistorical;
 
   const _MemberList({required this.members, this.isHistorical = false});
@@ -39,51 +71,137 @@ class _MemberList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (members.isEmpty) {
       return Center(
-        child: Text(
-          isHistorical ? 'No hay registros históricos.' : 'No hay miembros activos.',
-          style: const TextStyle(color: AppColors.muted),
+        child: Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Text(
+            isHistorical
+                ? 'No hay registros históricos.'
+                : 'No hay miembros activos.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.muted,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       itemCount: members.length,
-      separatorBuilder: (_, __) => const Divider(color: AppColors.border),
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final user = members[index];
-        final isCoordinator = user['rol'] == 'coordinador';
+        final isCoordinator = user.rol == 'coordinador';
 
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: CircleAvatar(
-            backgroundColor: const Color(0xFF1B2B20),
-            backgroundImage: user['url_avatar'] != null ? NetworkImage(user['url_avatar']) : null,
-            child: user['url_avatar'] == null ? const Icon(Icons.person, color: AppColors.primary) : null,
-          ),
-          title: Text(
-            user['nombre_completo'],
-            style: TextStyle(
-              fontWeight: isCoordinator ? FontWeight.w700 : FontWeight.w500,
-              color: isHistorical ? AppColors.muted : AppColors.onBackground,
+        return Container(
+          decoration: BoxDecoration(
+            color: isHistorical
+                ? AppColors.surface.withValues(alpha: 0.65)
+                : AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: AppColors.border.withValues(alpha: 0.75),
             ),
           ),
-          subtitle: Text(
-            isCoordinator ? 'COORDINADOR' : 'INVESTIGADOR',
-            style: const TextStyle(fontSize: 11, color: AppColors.primary, letterSpacing: 0.5),
-          ),
-          trailing: const Icon(Icons.chevron_right, color: AppColors.muted),
-          onTap: () {
-            final userId = user['id'] as String?;
-            if (userId == null) return;
-
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ProfileScreen(userId: userId),
+          child: ListTile(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            leading: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.45),
+                  width: 1.5,
+                ),
               ),
-            );
-          },
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                backgroundImage: user.urlAvatar != null
+                    ? NetworkImage(user.urlAvatar!)
+                    : null,
+                child: user.urlAvatar == null
+                    ? const Icon(
+                        Icons.person_outline,
+                        color: AppColors.primary,
+                        size: 22,
+                      )
+                    : null,
+              ),
+            ),
+            title: Text(
+              user.nombreCompleto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isCoordinator ? FontWeight.w700 : FontWeight.w600,
+                color: isHistorical ? AppColors.muted : AppColors.onBackground,
+              ),
+            ),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isHistorical
+                        ? AppColors.border.withValues(alpha: 0.5)
+                        : isCoordinator
+                            ? AppColors.primary
+                            : AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: Text(
+                    isCoordinator ? 'COORDINADOR' : 'INVESTIGADOR',
+                    style: TextStyle(
+                      fontSize: 8,
+                      color: isHistorical
+                          ? AppColors.muted
+                          : isCoordinator
+                              ? AppColors.background
+                              : AppColors.primary,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            trailing: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.chevron_right,
+                color: AppColors.primary,
+                size: 20,
+              ),
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProfileScreen(userId: user.id),
+                ),
+              );
+            },
+          ),
         );
       },
     );
