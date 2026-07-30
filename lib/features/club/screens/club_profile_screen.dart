@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/cuc_app_bar.dart';
+import '../../../core/widgets/cuc_pill_tab_bar.dart';
 import '../../profile/providers/profile_providers.dart';
 import '../widgets/club_header.dart';
 import '../widgets/club_metrics_row.dart';
@@ -49,28 +50,10 @@ class ClubProfileScreen extends ConsumerWidget {
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverAppBarDelegate(
-                  TabBar(
-                    indicator: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    indicatorSize: TabBarIndicatorSize.tab,
-                    dividerColor: Colors.transparent,
-                    labelColor: AppColors.primary,
-                    unselectedLabelColor: AppColors.muted,
-                    labelStyle: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.1,
-                    ),
-                    unselectedLabelStyle: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.1,
-                    ),
-                    tabs: [
-                      const Tab(text: 'MIEMBROS ACTIVOS'),
-                      if (canViewHistory) const Tab(text: 'HISTÓRICO'),
+                  CucPillTabBar(
+                    labels: [
+                      'MIEMBROS ACTIVOS',
+                      if (canViewHistory) 'HISTÓRICO',
                     ],
                   ),
                 ),
@@ -86,7 +69,7 @@ class ClubProfileScreen extends ConsumerWidget {
 
 // Delegado necesario para anclar el TabBar al hacer scroll
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  final TabBar _tabBar;
+  final PreferredSizeWidget _tabBar;
   const _SliverAppBarDelegate(this._tabBar);
 
   @override
@@ -97,17 +80,9 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(
       BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
+    return ColoredBox(
       color: AppColors.background,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: _tabBar,
-      ),
+      child: _tabBar,
     );
   }
 

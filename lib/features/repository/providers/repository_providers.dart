@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/cache/app_cache_service.dart';
 import '../../../core/providers/supabase_provider.dart';
+import '../../management/providers/coordinator_providers.dart';
 
 const repositoryFileLimitBytes = 10 * 1024 * 1024;
 
@@ -115,6 +116,7 @@ class RepositoryDocument {
     required this.description,
     required this.area,
     required this.tags,
+    this.reviewComments,
   });
 
   final String id;
@@ -130,6 +132,7 @@ class RepositoryDocument {
   final String description;
   final String area;
   final List<String> tags;
+  final String? reviewComments;
 
   /// Compatibilidad con consumidores antiguos que esperan un solo archivo.
   String get fileUrl => fileUrls.isEmpty ? '' : fileUrls.first;
@@ -159,6 +162,7 @@ class RepositoryDocument {
       description: (json['descripcion'] ?? '').toString(),
       area: (json['area_conocimiento'] ?? '').toString(),
       tags: _tags(json['etiquetas']),
+      reviewComments: json['comentarios_revision']?.toString(),
     );
   }
 
@@ -177,6 +181,7 @@ class RepositoryDocument {
       'descripcion': description,
       'area_conocimiento': area,
       'etiquetas': tags,
+      'comentarios_revision': reviewComments,
     };
   }
 
@@ -285,6 +290,49 @@ final repositoryDocumentsProvider =
             RepositoryDocument.fromJson(Map<String, dynamic>.from(item as Map)))
         .toList(),
     toJson: (value) => value.map((doc) => doc.toJson()).toList(),
+  );
+});
+
+final myDocumentsProvider =
+    FutureProvider.autoDispose<List<RepositoryDocument>>((ref) async {
+  final supabase = ref.read(supabaseClientProvider);
+  final user = supabase.auth.currentUser;
+  if (user == null) return [];
+
+  final cache = ref.read(appCacheServiceProvider);
+  return cache.staleWhileRevalidate<List<RepositoryDocument>>(
+    ref: ref,
+    key: 'repository:my_documents:${user.id}',
+    ttl: CacheTtl.repository,
+    fetch: () async {
+      final response = await supabase
+          .from('publicaciones_repositorio')
+          .select(
+            'id, id_autor, id_club, titulo, descripcion, categoria, '
+            'area_conocimiento, etiquetas, urls_archivos, estado, '
+            'fecha_creacion, comentarios_revision, '
+            'perfiles(nombre_completo), clubes(nombre)',
+          )
+          .eq('id_autor', user.id)
+          .order('fecha_creacion', ascending: false);
+
+      return (response as List<dynamic>)
+          .map(
+            (item) => RepositoryDocument.fromJson(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(growable: false);
+    },
+    fromJson: (json) => (json as List<dynamic>)
+        .map(
+          (item) => RepositoryDocument.fromJson(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
+        .toList(growable: false),
+    toJson: (documents) =>
+        documents.map((document) => document.toJson()).toList(growable: false),
   );
 });
 
@@ -527,11 +575,137 @@ class RepositoryActions {
 
     await ref.read(appCacheServiceProvider).invalidatePrefix('repository:');
     ref.invalidate(repositoryDocumentsProvider);
+    ref.invalidate(myDocumentsProvider);
+    ref.invalidate(pendingDocumentsProvider);
     return 'pendiente';
+  }
+
+  Future<void> resubmitDocument({
+    required RepositoryDocument document,
+    required String title,
+    required String description,
+    required List<PlatformFile> replacementFiles,
+  }) async {
+    if (title.trim().isEmpty) {
+      throw Exception('Ingresa el título del documento.');
+    }
+
+    if (replacementFiles.length > 3) {
+      throw Exception('Selecciona un máximo de 3 archivos.');
+    }
+
+    for (final file in replacementFiles) {
+      final fileBytes = file.bytes;
+      if (fileBytes == null) {
+        throw Exception('No se pudo leer el archivo "${file.name}".');
+      }
+      if (fileBytes.length > repositoryFileLimitBytes) {
+        throw Exception('El archivo "${file.name}" no puede superar 10MB.');
+      }
+      final extension = file.extension?.toLowerCase() ?? 'bin';
+      if (!_allowedExtensions.contains(extension)) {
+        throw Exception(
+          'El formato de "${file.name}" no está permitido. '
+          'Usa PDF, DOC, DOCX, TXT, JPG, PNG o JPEG.',
+        );
+      }
+    }
+
+    final supabase = ref.read(supabaseClientProvider);
+    final user = supabase.auth.currentUser;
+    if (user == null) {
+      throw Exception('Debes iniciar sesión para reenviar documentos.');
+    }
+
+    final replacementPaths = <String>[];
+    var urls = document.fileUrls;
+
+    try {
+      if (replacementFiles.isNotEmpty) {
+        final uploadId = DateTime.now().microsecondsSinceEpoch;
+        for (var index = 0; index < replacementFiles.length; index++) {
+          final file = replacementFiles[index];
+          replacementPaths.add(
+            '${user.id}/${uploadId}_${index}_'
+            '${file.name.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_')}',
+          );
+        }
+
+        await Future.wait([
+          for (var index = 0; index < replacementFiles.length; index++)
+            supabase.storage.from('repositorio').uploadBinary(
+                  replacementPaths[index],
+                  replacementFiles[index].bytes!,
+                  fileOptions: FileOptions(
+                    upsert: false,
+                    contentType: _contentType(
+                      replacementFiles[index].extension?.toLowerCase() ?? 'bin',
+                    ),
+                  ),
+                ),
+        ]);
+
+        urls = replacementPaths
+            .map(
+              (path) => supabase.storage.from('repositorio').getPublicUrl(path),
+            )
+            .toList(growable: false);
+      }
+
+      if (urls.isEmpty) {
+        throw Exception('El documento debe conservar al menos un archivo.');
+      }
+
+      await supabase.rpc(
+        'reenviar_publicacion',
+        params: {
+          'p_id_publicacion': document.id,
+          'p_nuevo_titulo': title.trim(),
+          'p_nueva_descripcion': description.trim(),
+          'p_nuevas_urls': urls,
+        },
+      );
+    } catch (error) {
+      if (replacementPaths.isNotEmpty) {
+        try {
+          await supabase.storage.from('repositorio').remove(replacementPaths);
+        } catch (_) {
+          // Conserva el error original si el rollback de Storage falla.
+        }
+      }
+      rethrow;
+    }
+
+    if (replacementFiles.isNotEmpty) {
+      final previousPaths = document.fileUrls
+          .map(_storagePathFromPublicUrl)
+          .whereType<String>()
+          .toList(growable: false);
+      if (previousPaths.isNotEmpty) {
+        try {
+          await supabase.storage.from('repositorio').remove(previousPaths);
+        } catch (_) {
+          // El reenvío ya fue confirmado; una limpieza fallida no lo revierte.
+        }
+      }
+    }
+
+    await ref.read(appCacheServiceProvider).invalidatePrefix('repository:');
+    ref.invalidate(repositoryDocumentsProvider);
+    ref.invalidate(myDocumentsProvider);
+    ref.invalidate(pendingDocumentsProvider);
   }
 
   Future<void> deleteDocument(RepositoryDocument document) async {
     final supabase = ref.read(supabaseClientProvider);
+
+    // 🛡️ 1. PRIMERO: Intentar borrar el registro de la base de datos
+    await supabase
+        .from('publicaciones_repositorio')
+        .delete()
+        .eq('id', document.id);
+
+    // 🛡️ 2. SEGUNDO: Si la BD tuvo éxito, procedemos a limpiar Storage
     final paths = <String>[];
     for (final fileUrl in document.fileUrls) {
       final path = _storagePathFromPublicUrl(fileUrl);
@@ -539,19 +713,20 @@ class RepositoryActions {
     }
 
     if (paths.isNotEmpty) {
-      await supabase.storage.from('repositorio').remove(paths);
+      try {
+        await supabase.storage.from('repositorio').remove(paths);
+      } catch (_) {
+        // Ignorar falla silenciosa: Es preferible tener un archivo huérfano que romper el flujo
+      }
     }
 
-    await supabase
-        .from('publicaciones_repositorio')
-        .delete()
-        .eq('id', document.id);
-
+    // 3. Invalida cachés
     await ref.read(appCacheServiceProvider).invalidatePrefix('repository:');
     await ref
         .read(appCacheServiceProvider)
         .invalidate('club:${document.clubId}:docs_count');
     ref.invalidate(repositoryDocumentsProvider);
+    ref.invalidate(myDocumentsProvider);
   }
 
   String? _storagePathFromPublicUrl(String url) {

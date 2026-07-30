@@ -9,7 +9,12 @@ import '../providers/repository_providers.dart';
 import 'repository_filter_sheet.dart';
 
 class RepositoryUploadSheet extends ConsumerStatefulWidget {
-  const RepositoryUploadSheet({super.key});
+  const RepositoryUploadSheet({
+    super.key,
+    this.documentToEdit,
+  });
+
+  final RepositoryDocument? documentToEdit;
 
   @override
   ConsumerState<RepositoryUploadSheet> createState() =>
@@ -28,6 +33,25 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
   bool _uploading = false;
   String? _tagError;
   String? _inlineError;
+
+  bool get _isEditing => widget.documentToEdit != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final document = widget.documentToEdit;
+    if (document == null) return;
+
+    _titleController.text = document.title;
+    _descriptionController.text = document.description;
+    _category = repositoryCategoryOptions.containsKey(document.category)
+        ? document.category
+        : repositoryCategoryOptions.keys.first;
+    _area = repositoryAreaOptions.containsKey(document.area)
+        ? document.area
+        : repositoryAreaOptions.keys.first;
+    _tags.addAll(document.tags.take(maxSocialTags));
+  }
 
   @override
   void dispose() {
@@ -137,7 +161,7 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
     setState(() => _inlineError = null);
     if (!_formKey.currentState!.validate()) return;
 
-    if (_files.isEmpty || _files.length > 3) return;
+    if ((!_isEditing && _files.isEmpty) || _files.length > 3) return;
     if (_tagsController.text.trim().isNotEmpty &&
         !_addTags(_tagsController.text)) {
       return;
@@ -145,16 +169,28 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
 
     setState(() => _uploading = true);
     try {
-      final status = await ref.read(repositoryActionsProvider).uploadDocument(
-            RepositoryUploadInput(
-              title: _titleController.text,
-              description: _descriptionController.text,
-              category: _category,
-              area: _area,
-              tags: _tags,
-              files: List.unmodifiable(_files),
-            ),
-          );
+      final actions = ref.read(repositoryActionsProvider);
+      late final String status;
+      if (_isEditing) {
+        await actions.resubmitDocument(
+          document: widget.documentToEdit!,
+          title: _titleController.text,
+          description: _descriptionController.text,
+          replacementFiles: List.unmodifiable(_files),
+        );
+        status = 'pendiente';
+      } else {
+        status = await actions.uploadDocument(
+          RepositoryUploadInput(
+            title: _titleController.text,
+            description: _descriptionController.text,
+            category: _category,
+            area: _area,
+            tags: _tags,
+            files: List.unmodifiable(_files),
+          ),
+        );
+      }
       if (!mounted) {
         return;
       }
@@ -162,9 +198,11 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            status == 'aprobado'
-                ? 'Documento publicado.'
-                : 'Documento enviado a revisión.',
+            _isEditing
+                ? 'Documento corregido y reenviado a revisión.'
+                : status == 'aprobado'
+                    ? 'Documento publicado.'
+                    : 'Documento enviado a revisión.',
           ),
         ),
       );
@@ -204,9 +242,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'SUBIR DOCUMENTO',
-                  style: TextStyle(
+                Text(
+                  _isEditing ? 'CORREGIR DOCUMENTO' : 'SUBIR DOCUMENTO',
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 1,
@@ -243,9 +281,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 ),
                 TextField(
                   controller: _descriptionController,
-                  minLines: 8,
-                  maxLines: 12,
-                  maxLength: 2000,
+                  minLines: 6,
+                  maxLines: 15,
+                  maxLength: 1000,
                   decoration: repositoryInputDecoration(
                     hintText: 'Descripción breve',
                   ),
@@ -255,11 +293,13 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                   label: 'CATEGORÍA',
                   value: _category,
                   options: repositoryCategoryOptions,
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _category = value);
-                    }
-                  },
+                  onChanged: _isEditing
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setState(() => _category = value);
+                          }
+                        },
                 ),
                 const SizedBox(height: 12),
                 const RepositoryFilterLabel(
@@ -274,8 +314,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                         .map(
                           (tag) => InputChip(
                             label: Text(tag),
-                            onDeleted:
-                                _uploading ? null : () => _removeTag(tag),
+                            onDeleted: _uploading || _isEditing
+                                ? null
+                                : () => _removeTag(tag),
                           ),
                         )
                         .toList(),
@@ -284,7 +325,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 ],
                 TextField(
                   controller: _tagsController,
-                  enabled: !_uploading && _tags.length < maxSocialTags,
+                  enabled: !_uploading &&
+                      !_isEditing &&
+                      _tags.length < maxSocialTags,
                   textInputAction: TextInputAction.done,
                   maxLength: maxSocialTagLength,
                   decoration: repositoryInputDecoration(
@@ -295,7 +338,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                     prefixIcon: const Icon(Icons.tag),
                     suffixIcon: IconButton(
                       tooltip: 'Agregar etiqueta',
-                      onPressed: _uploading || _tags.length >= maxSocialTags
+                      onPressed: _uploading ||
+                              _isEditing ||
+                              _tags.length >= maxSocialTags
                           ? null
                           : () => _addTags(_tagsController.text),
                       icon: const Icon(Icons.add_circle_outline),
@@ -313,19 +358,36 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                   label: 'ÁREA DE CONOCIMIENTO',
                   value: _area,
                   options: repositoryAreaOptions,
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _area = value);
-                    }
-                  },
+                  onChanged: _isEditing
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setState(() => _area = value);
+                          }
+                        },
                 ),
+                if (_isEditing) ...[
+                  const SizedBox(height: 10),
+                  const Text(
+                    'La categoría, el área y las etiquetas se conservan. '
+                    'Puedes corregir el título, la descripción y reemplazar '
+                    'los archivos.',
+                    style: TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 11,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _uploading ? null : _pickFile,
                   icon: const Icon(Icons.attach_file),
                   label: Text(
                     _files.isEmpty
-                        ? 'Seleccionar archivos (1 a 3, máx. 10MB c/u)'
+                        ? _isEditing
+                            ? 'Conservar archivos actuales o elegir reemplazos'
+                            : 'Seleccionar archivos (1 a 3, máx. 10MB c/u)'
                         : _files.map((file) => file.name).join('\n'),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -396,7 +458,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: _uploading || _files.isEmpty || _files.length > 3
+                    onPressed: _uploading ||
+                            (!_isEditing && _files.isEmpty) ||
+                            _files.length > 3
                         ? null
                         : _submit,
                     style: ElevatedButton.styleFrom(
@@ -409,7 +473,9 @@ class RepositoryUploadSheetState extends ConsumerState<RepositoryUploadSheet> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.send),
-                    label: const Text('ENVIAR A REVISIÓN'),
+                    label: Text(
+                      _isEditing ? 'CORREGIR Y REENVIAR' : 'ENVIAR A REVISIÓN',
+                    ),
                   ),
                 ),
               ],

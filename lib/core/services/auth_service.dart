@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../cache/app_cache_service.dart';
+import '../../features/profile/providers/profile_providers.dart';
 
 // Creamos un Provider de Riverpod para acceder a este servicio desde cualquier pantalla
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -68,10 +69,21 @@ class AuthService {
     required String contrasena,
   }) async {
     try {
-      await _supabase.auth.signInWithPassword(
+      final response = await _supabase.auth.signInWithPassword(
         email: correo.trim().toLowerCase(),
         password: contrasena,
       );
+
+      await _ref.read(appCacheServiceProvider).clearAll();
+
+      final user = response.user;
+      if (user != null) {
+        _ref.invalidate(profileProvider(user.id));
+      }
+      _ref.invalidate(currentUserProfileProvider);
+
+      await _ref.read(currentUserProfileProvider.future);
+
       return null; // Éxito
     } on AuthException catch (e) {
       // Manejo de errores específicos (RF01.5: Intentos fallidos)

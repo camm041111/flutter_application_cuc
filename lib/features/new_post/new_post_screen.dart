@@ -144,7 +144,7 @@ class _NewPostAppBar extends StatelessWidget implements PreferredSizeWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('CUC', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, height: 1)),
-              Text('RESEARCH PORTAL', style: TextStyle(fontSize: 9, color: AppColors.primary, letterSpacing: 1.2, height: 1.3)),
+              Text('PORTAL PARA DIVULGADORES CIENTIFICOS', style: TextStyle(fontSize: 9, color: AppColors.primary, letterSpacing: 1.2, height: 1.3)),
             ],
           ),
         ],

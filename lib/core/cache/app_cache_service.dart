@@ -153,6 +153,18 @@ class AppCacheService {
     await invalidatePrefix('events:');
   }
 
+  Future<void> clearAll() async {
+    _memory.clear();
+    _inFlight.clear();
+
+    final prefs = await _preferences();
+    final keys = prefs
+        .getKeys()
+        .where((key) => key.startsWith(_storageKey('')))
+        .toList(growable: false);
+    await Future.wait(keys.map(prefs.remove));
+  }
+
   Future<T> _refresh<T>({
     required Ref ref,
     required String key,

@@ -144,7 +144,7 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
                       ),
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.muted, height: 1.4),
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),

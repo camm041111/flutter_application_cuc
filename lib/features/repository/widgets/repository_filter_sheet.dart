@@ -281,7 +281,7 @@ class RepositoryFilterDropdown extends StatelessWidget {
   final String label;
   final String value;
   final Map<String, String> options;
-  final ValueChanged<String?> onChanged;
+  final ValueChanged<String?>? onChanged;
 
   @override
   Widget build(BuildContext context) {
