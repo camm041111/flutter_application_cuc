@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/theme/app_theme.dart';
-import '../../../core/services/auth_service.dart';
-import '../../../core/providers/auth_providers.dart';
+import '../../core/cache/app_cache_service.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/providers/supabase_provider.dart';
+import 'providers/profile_providers.dart';
 
 /// Pantalla de estado de "Solo Lectura"
 class PendingProfileScreen extends ConsumerWidget {
@@ -93,10 +95,17 @@ class PendingProfileScreen extends ConsumerWidget {
       children: [
         // Botón para re-validar el estado contra Supabase
         ElevatedButton.icon(
-          onPressed: () {
+          onPressed: () async {
             // Invalidamos el provider del perfil para forzar una nueva consulta a la DB
             // Si el estado cambió a 'activo', GoRouter nos moverá automáticamente[cite: 3].
-            ref.invalidate(perfilUsuarioProvider);
+            final user = ref.read(supabaseClientProvider).auth.currentUser;
+            if (user != null) {
+              await ref
+                  .read(appCacheServiceProvider)
+                  .invalidate('profile:${user.id}');
+              ref.invalidate(profileProvider(user.id));
+            }
+            ref.invalidate(currentUserProfileProvider);
           },
           icon: const Icon(Icons.refresh_rounded, size: 20),
           label: const Text('ACTUALIZAR ESTADO'),
