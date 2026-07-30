@@ -33,15 +33,7 @@ class RepositoryFileDownloadTileState
 
     setState(() => _downloading = true);
     try {
-      final file = await _localFile();
-      if (!await file.exists()) {
-        final request = await HttpClient().getUrl(Uri.parse(widget.fileUrl));
-        final response = await request.close();
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          throw Exception('No se pudo descargar el archivo.');
-        }
-        await response.pipe(file.openWrite());
-      }
+      final file = await downloadRepositoryFile(widget.fileUrl);
 
       final result = await OpenFilex.open(file.path);
       if (result.type != ResultType.done && mounted) {
@@ -61,18 +53,6 @@ class RepositoryFileDownloadTileState
         setState(() => _downloading = false);
       }
     }
-  }
-
-  Future<File> _localFile() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final repositoryDirectory = Directory('${directory.path}/repositorio');
-    if (!await repositoryDirectory.exists()) {
-      await repositoryDirectory.create(recursive: true);
-    }
-
-    final safeName = _fileName.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
-    final urlPrefix = widget.fileUrl.hashCode.toUnsigned(32).toRadixString(16);
-    return File('${repositoryDirectory.path}/${urlPrefix}_$safeName');
   }
 
   @override
@@ -128,27 +108,65 @@ class RepositoryFileDownloadTileState
             ),
           ),
           const SizedBox(width: 10),
-          OutlinedButton.icon(
+          IconButton(
+            tooltip: 'Descargar',
             onPressed: _downloading ? null : _downloadOrOpen,
             icon: _downloading
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
                   )
-                : const Icon(Icons.download_rounded, size: 17),
-            label: const Text('DESCARGAR'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
+                : const Icon(
+                    Icons.download_rounded,
+                    size: 21,
+                    color: AppColors.primary,
+                  ),
+            style: IconButton.styleFrom(
+              foregroundColor: AppColors.primary,
             ),
           ),
         ],
       ),
     );
   }
+}
+
+Future<File> downloadRepositoryFile(String fileUrl) async {
+  final repositoryDirectory = await repositoryDownloadDirectory();
+
+  final fileName = repositoryFileNameFromUrl(fileUrl);
+  final safeName = fileName.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+  final urlPrefix = fileUrl.hashCode.toUnsigned(32).toRadixString(16);
+  final file = File('${repositoryDirectory.path}/${urlPrefix}_$safeName');
+  if (await file.exists()) return file;
+
+  final request = await HttpClient().getUrl(Uri.parse(fileUrl));
+  final response = await request.close();
+  if (response.statusCode < 200 || response.statusCode >= 300) {
+    throw Exception('No se pudo descargar "$fileName".');
+  }
+  await response.pipe(file.openWrite());
+  return file;
+}
+
+Future<Directory> repositoryDownloadDirectory() async {
+  Directory? downloadsDirectory;
+  try {
+    downloadsDirectory = await getDownloadsDirectory();
+  } catch (_) {
+    // Algunas plataformas no exponen una carpeta pública de descargas.
+  }
+  final baseDirectory =
+      downloadsDirectory ?? await getApplicationDocumentsDirectory();
+  final repositoryDirectory = Directory('${baseDirectory.path}/repositorio');
+  if (!await repositoryDirectory.exists()) {
+    await repositoryDirectory.create(recursive: true);
+  }
+  return repositoryDirectory;
 }
 
 String repositoryFileNameFromUrl(String url) {

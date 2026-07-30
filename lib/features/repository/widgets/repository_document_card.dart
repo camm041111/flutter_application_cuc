@@ -1,13 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../explore/widgets/news_tag.dart';
 import '../providers/repository_providers.dart';
 import 'repository_detail_sheet.dart';
+import 'repository_file_download_tile.dart';
 
 class RepositoryDocumentCard extends StatefulWidget {
   const RepositoryDocumentCard({
@@ -34,26 +33,37 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
   }
 
   Future<void> _downloadOrOpen() async {
-    final document = widget.document;
-    if (document.fileUrl.isEmpty || _downloading) return;
+    final urls = widget.document.fileUrls;
+    if (urls.isEmpty || _downloading) return;
 
     setState(() => _downloading = true);
     try {
-      final file = await _localFileForUrl(document.fileUrl);
-      if (!await file.exists()) {
-        final request = await HttpClient().getUrl(Uri.parse(document.fileUrl));
-        final response = await request.close();
-        if (response.statusCode < 200 || response.statusCode >= 300) {
-          throw Exception('No se pudo descargar el archivo.');
-        }
-        await response.pipe(file.openWrite());
-      }
+      if (urls.length == 1) {
+        // 🛡️ Flujo 1: Un solo archivo. Abrimos directo con visor nativo
+        final file = await downloadRepositoryFile(urls.single);
+        final result = await OpenFilex.open(file.path);
 
-      final result = await OpenFilex.open(file.path);
-      if (result.type != ResultType.done && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result.message)),
+        if (result.type != ResultType.done && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result.message)),
+          );
+        }
+      } else {
+        // 🛡️ Flujo 2: Múltiples archivos. Delegamos al Share Sheet
+        final downloadedFiles = await Future.wait(urls.map(downloadRepositoryFile));
+        final xFiles = downloadedFiles.map((file) => XFile(file.path)).toList();
+
+        final result = await Share.shareXFiles(
+          xFiles,
+          subject: widget.document.title,
+          text: 'Anexos del documento: ${widget.document.title}',
         );
+
+        if (result.status == ShareResultStatus.success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Archivos procesados correctamente.')),
+          );
+        }
       }
     } catch (error) {
       if (!mounted) return;
@@ -63,21 +73,6 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
     } finally {
       if (mounted) setState(() => _downloading = false);
     }
-  }
-
-  Future<File> _localFileForUrl(String url) async {
-    final directory = await getApplicationDocumentsDirectory();
-    final repositoryDirectory = Directory('${directory.path}/repositorio');
-    if (!await repositoryDirectory.exists()) {
-      await repositoryDirectory.create(recursive: true);
-    }
-
-    final uri = Uri.parse(url);
-    final rawName = uri.pathSegments.isEmpty
-        ? widget.document.id
-        : Uri.decodeComponent(uri.pathSegments.last);
-    final safeName = rawName.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
-    return File('${repositoryDirectory.path}/${widget.document.id}_$safeName');
   }
 
   @override
@@ -93,12 +88,10 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-              color:
-                  AppColors.border.withValues(alpha: 0.3)), // Borde más sutil
+              color: AppColors.border.withValues(alpha: 0.3)),
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment
-              .start, // Alineación superior para lectura natural
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               width: 42,
@@ -107,7 +100,7 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
                 color: AppColors.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
                 border:
-                    Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
               ),
               child: Icon(
                 repositoryCategoryIcon(document.category),
@@ -145,7 +138,10 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
                   const SizedBox(height: 6),
                   if (document.description.isNotEmpty) ...[
                     Text(
-                      document.description,
+                      document.description.replaceAll(
+                        RegExp(r'(\*\*|_|\[|\]|\(.*?\))'),
+                        '',
+                      ),
                       style: const TextStyle(
                           fontSize: 12, color: AppColors.muted, height: 1.4),
                       maxLines: 2,
@@ -153,7 +149,6 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
                     ),
                     const SizedBox(height: 8),
                   ],
-                  // Metadatos compactos
                   Wrap(
                     crossAxisAlignment: WrapCrossAlignment.center,
                     spacing: 6,
@@ -164,7 +159,7 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
                           label: document.authorName),
                       const Text('•',
                           style:
-                              TextStyle(color: AppColors.border, fontSize: 10)),
+                          TextStyle(color: AppColors.border, fontSize: 10)),
                       _MetaChip(
                         icon: Icons.category_outlined,
                         label: repositoryCategoryOptions[document.category] ??
@@ -188,18 +183,19 @@ class RepositoryDocumentCardState extends State<RepositoryDocumentCard> {
             const SizedBox(width: 12),
             IconButton(
               tooltip: 'Descargar',
-              onPressed: document.fileUrl.isEmpty || _downloading
+              onPressed: document.fileUrls.isEmpty || _downloading
                   ? null
                   : _downloadOrOpen,
               icon: _downloading
                   ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
                   : const Icon(Icons.download_rounded, size: 18),
               style: IconButton.styleFrom(
                 backgroundColor: AppColors.border.withValues(alpha: 0.2),
+                foregroundColor: AppColors.primary,
                 minimumSize: const Size(36, 36),
                 padding: EdgeInsets.zero,
               ),

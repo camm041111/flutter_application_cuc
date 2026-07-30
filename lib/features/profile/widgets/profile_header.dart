@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/cache/app_cache_service.dart';
-import '../../../core/providers/supabase_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../club/screens/club_profile_screen.dart';
+import '../../repository/providers/repository_providers.dart';
 import '../../repository/widgets/repository_view.dart';
 import '../providers/profile_providers.dart';
 
@@ -129,42 +127,10 @@ class _ProfileHeaderState extends ConsumerState<ProfileHeader> {
     setState(() => _uploadingAvatar = true);
 
     try {
-      final bytes = await image.readAsBytes();
-      const maxBytes = 10 * 1024 * 1024;
-      if (bytes.length > maxBytes) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('La imagen no puede superar 10MB.')),
-        );
-        return;
-      }
-
-      final extension = image.name.split('.').last.toLowerCase();
-      final safeExtension =
-          extension == 'png' || extension == 'webp' ? extension : 'jpg';
-      final contentType =
-          safeExtension == 'jpg' ? 'image/jpeg' : 'image/$safeExtension';
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final path = '${widget.profile.id}/avatar_$timestamp.$safeExtension';
-      final supabase = ref.read(supabaseClientProvider);
-
-      await supabase.storage.from('avatars').uploadBinary(
-            path,
-            bytes,
-            fileOptions: FileOptions(
-              upsert: true,
-              contentType: contentType,
-            ),
-          );
-
-      final publicUrl = supabase.storage.from('avatars').getPublicUrl(path);
-      await supabase
-          .from('perfiles')
-          .update({'url_avatar': publicUrl}).eq('id', widget.profile.id);
-
       await ref
-          .read(appCacheServiceProvider)
-          .invalidate('profile:${widget.profile.id}');
-      ref.invalidate(profileProvider(widget.profile.id));
+          .read(profileActionsProvider)
+          .uploadAvatar(widget.profile, image);
+      if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(content: Text('Imagen de perfil actualizada.')),
       );
@@ -303,6 +269,10 @@ class _ProfileHeaderState extends ConsumerState<ProfileHeader> {
             icon: const Icon(Icons.folder_outlined,
                 color: AppColors.primary, size: 26),
             onPressed: () {
+              final filters = ref.read(repositoryFiltersProvider);
+              ref.read(repositoryFiltersProvider.notifier).setFilters(
+                    filters.copyWith(author: profile.nombreCompleto),
+                  );
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const RepositoryView()),

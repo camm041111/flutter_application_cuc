@@ -106,8 +106,7 @@ class RepositoryDocument {
     required this.title,
     required this.category,
     required this.createdAt,
-    required this.fileUrl,
-    this.fileUrls = const [],
+    required this.fileUrls,
     required this.authorId,
     required this.clubId,
     required this.authorName,
@@ -122,7 +121,6 @@ class RepositoryDocument {
   final String title;
   final String category;
   final DateTime createdAt;
-  final String fileUrl;
   final List<String> fileUrls;
   final String authorId;
   final String clubId;
@@ -133,17 +131,17 @@ class RepositoryDocument {
   final String area;
   final List<String> tags;
 
-  List<String> get downloadableFileUrls {
-    if (fileUrls.isNotEmpty) {
-      return fileUrls;
-    }
-    return fileUrl.isEmpty ? const [] : [fileUrl];
-  }
+  /// Compatibilidad con consumidores antiguos que esperan un solo archivo.
+  String get fileUrl => fileUrls.isEmpty ? '' : fileUrls.first;
+
+  List<String> get downloadableFileUrls => fileUrls;
 
   factory RepositoryDocument.fromJson(Map<String, dynamic> json) {
     final profile = json['perfiles'] as Map<String, dynamic>?;
     final club = json['clubes'] as Map<String, dynamic>?;
-    final fileUrls = _fileUrls(json['urls_archivos']);
+    var fileUrls = _fileUrls(json['urls_archivos']);
+    if (fileUrls.isEmpty) fileUrls = _fileUrls(json['fileUrls']);
+    if (fileUrls.isEmpty) fileUrls = _fileUrls(json['fileUrl']);
 
     return RepositoryDocument(
       id: json['id'].toString(),
@@ -151,7 +149,6 @@ class RepositoryDocument {
       category: (json['categoria'] ?? 'General').toString(),
       createdAt: DateTime.tryParse((json['fecha_creacion'] ?? '').toString()) ??
           DateTime.now(),
-      fileUrl: fileUrls.isEmpty ? '' : fileUrls.first,
       fileUrls: fileUrls,
       authorId: (json['id_autor'] ?? '').toString(),
       clubId: (json['id_club'] ?? '').toString(),
@@ -171,7 +168,7 @@ class RepositoryDocument {
       'titulo': title,
       'categoria': category,
       'fecha_creacion': createdAt.toIso8601String(),
-      'urls_archivos': downloadableFileUrls,
+      'urls_archivos': fileUrls,
       'id_autor': authorId,
       'id_club': clubId,
       'perfiles': {'nombre_completo': authorName},
@@ -189,6 +186,9 @@ class RepositoryDocument {
           .map((item) => item.toString().trim())
           .where((item) => item.isNotEmpty)
           .toList();
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      return [value.trim()];
     }
     return const [];
   }
@@ -377,7 +377,7 @@ class RepositoryUploadInput {
     required this.category,
     required this.area,
     required this.tags,
-    required this.file,
+    required this.files,
   });
 
   final String title;
@@ -385,7 +385,7 @@ class RepositoryUploadInput {
   final String category;
   final String area;
   final List<String> tags;
-  final PlatformFile file;
+  final List<PlatformFile> files;
 }
 
 final repositoryActionsProvider = Provider<RepositoryActions>((ref) {
@@ -438,12 +438,25 @@ class RepositoryActions {
   }
 
   Future<String> uploadDocument(RepositoryUploadInput input) async {
-    final fileBytes = input.file.bytes;
-    if (fileBytes == null) {
-      throw Exception('No se pudo leer el archivo seleccionado.');
+    if (input.files.isEmpty || input.files.length > 3) {
+      throw Exception('Selecciona entre 1 y 3 archivos.');
     }
-    if (fileBytes.length > repositoryFileLimitBytes) {
-      throw Exception('El archivo no puede superar 10MB.');
+
+    for (final file in input.files) {
+      final fileBytes = file.bytes;
+      if (fileBytes == null) {
+        throw Exception('No se pudo leer el archivo "${file.name}".');
+      }
+      if (fileBytes.length > repositoryFileLimitBytes) {
+        throw Exception('El archivo "${file.name}" no puede superar 10MB.');
+      }
+      final extension = file.extension?.toLowerCase() ?? 'bin';
+      if (!_allowedExtensions.contains(extension)) {
+        throw Exception(
+          'El formato de "${file.name}" no está permitido. '
+          'Usa PDF, DOC, DOCX, TXT, JPG, PNG o JPEG.',
+        );
+      }
     }
 
     final supabase = ref.read(supabaseClientProvider);
@@ -457,40 +470,60 @@ class RepositoryActions {
         .select('id_club, rol')
         .eq('id', user.id)
         .single();
-    final extension = input.file.extension?.toLowerCase() ?? 'bin';
-    if (!_allowedExtensions.contains(extension)) {
+
+    final uploadId = DateTime.now().microsecondsSinceEpoch;
+    final paths = <String>[
+      for (var index = 0; index < input.files.length; index++)
+        '${user.id}/${uploadId}_${index}_'
+            '${input.files[index].name.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_')}',
+    ];
+
+    try {
+      await Future.wait([
+        for (var index = 0; index < input.files.length; index++)
+          supabase.storage.from('repositorio').uploadBinary(
+                paths[index],
+                input.files[index].bytes!,
+                fileOptions: FileOptions(
+                  upsert: false,
+                  contentType: _contentType(
+                    input.files[index].extension?.toLowerCase() ?? 'bin',
+                  ),
+                ),
+              ),
+      ]);
+
+      final urls = paths
+          .map(
+            (path) => supabase.storage.from('repositorio').getPublicUrl(path),
+          )
+          .toList(growable: false);
+
+      await supabase.from('publicaciones_repositorio').insert({
+        'titulo': input.title.trim(),
+        'descripcion': input.description.trim(),
+        'categoria': repositoryCategoryOptions.containsKey(input.category)
+            ? input.category
+            : repositoryCategoryOptions.keys.first,
+        'area_conocimiento': repositoryAreaOptions.containsKey(input.area)
+            ? input.area
+            : repositoryAreaOptions.keys.first,
+        'etiquetas': input.tags.take(4).toList(),
+        'urls_archivos': urls,
+        'id_autor': user.id,
+        'id_club': profile['id_club'],
+      });
+    } catch (error) {
+      try {
+        await supabase.storage.from('repositorio').remove(paths);
+      } catch (_) {
+        // Conserva el error original si tampoco se pudo completar el rollback.
+      }
       throw Exception(
-          'Formato no permitido. Usa PDF, DOC, DOCX, TXT, JPG, PNG o JPEG.');
+        'No se pudieron subir todos los archivos. '
+        'Verifica tu conexión y vuelve a intentarlo.',
+      );
     }
-    final safeName =
-        input.file.name.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
-    final path =
-        '${user.id}/${DateTime.now().millisecondsSinceEpoch}_$safeName';
-
-    await supabase.storage.from('repositorio').uploadBinary(
-          path,
-          fileBytes,
-          fileOptions: FileOptions(
-            upsert: false,
-            contentType: _contentType(extension),
-          ),
-        );
-
-    final url = supabase.storage.from('repositorio').getPublicUrl(path);
-    await supabase.from('publicaciones_repositorio').insert({
-      'titulo': input.title.trim(),
-      'descripcion': input.description.trim(),
-      'categoria': repositoryCategoryOptions.containsKey(input.category)
-          ? input.category
-          : repositoryCategoryOptions.keys.first,
-      'area_conocimiento': repositoryAreaOptions.containsKey(input.area)
-          ? input.area
-          : repositoryAreaOptions.keys.first,
-      'etiquetas': input.tags.take(4).toList(),
-      'urls_archivos': [url],
-      'id_autor': user.id,
-      'id_club': profile['id_club'],
-    });
 
     await ref.read(appCacheServiceProvider).invalidatePrefix('repository:');
     ref.invalidate(repositoryDocumentsProvider);
@@ -500,8 +533,8 @@ class RepositoryActions {
   Future<void> deleteDocument(RepositoryDocument document) async {
     final supabase = ref.read(supabaseClientProvider);
     final paths = <String>[];
-    if (document.fileUrl.isNotEmpty) {
-      final path = _storagePathFromPublicUrl(document.fileUrl);
+    for (final fileUrl in document.fileUrls) {
+      final path = _storagePathFromPublicUrl(fileUrl);
       if (path != null) paths.add(path);
     }
 
