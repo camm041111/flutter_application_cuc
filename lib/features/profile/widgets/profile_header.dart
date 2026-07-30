@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../club/screens/club_profile_screen.dart';
 import '../../repository/providers/repository_providers.dart';
+import '../../repository/screens/my_contributions_screen.dart';
 import '../../repository/widgets/repository_view.dart';
 import '../providers/profile_providers.dart';
 
@@ -338,6 +339,16 @@ class _ProfileHeaderState extends ConsumerState<ProfileHeader> {
               size: 21,
             ),
             onPressed: () {
+              if (widget.isOwner) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const MyContributionsScreen(),
+                  ),
+                );
+                return;
+              }
+
               final filters = ref.read(repositoryFiltersProvider);
               ref.read(repositoryFiltersProvider.notifier).setFilters(
                     filters.copyWith(author: profile.nombreCompleto),
