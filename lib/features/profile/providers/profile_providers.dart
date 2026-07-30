@@ -235,6 +235,23 @@ final statsProvider =
   );
 });
 
+// 4.5. Provider de Rango (Consume el RPC de Percentil)
+final rankProvider = FutureProvider.family<({int percentil, String etiqueta}), String>(
+      (ref, userId) async {
+    final supabase = ref.read(supabaseClientProvider);
+
+    final response = await supabase.rpc(
+      'obtener_rango_perfil',
+      params: {'p_id_usuario': userId},
+    ).single();
+
+    return (
+    percentil: int.tryParse(response['percentil'].toString()) ?? 100,
+    etiqueta: (response['etiqueta'] ?? 'NUEVO').toString(),
+    );
+  },
+);
+
 // 5. Provider de Publicaciones Recientes (Top 3)
 final recentPostsProvider =
     FutureProvider.family<List<RecentPost>, String>((ref, userId) async {

@@ -13,19 +13,26 @@ class ClubHeatmapSection extends ConsumerWidget {
     final heatmapAsync = ref.watch(clubHeatmapProvider(clubId));
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Actividad Colectiva',
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              const Text(
+                'ACTIVIDAD COLECTIVA',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                  color: AppColors.onBackground,
+                ),
+              ),
               Row(children: ContributionHeatmap.legend()),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           heatmapAsync.when(
             loading: () => const SizedBox(
                 height: 120,
@@ -34,10 +41,20 @@ class ClubHeatmapSection extends ConsumerWidget {
                         CircularProgressIndicator(color: AppColors.primary))),
             error: (e, s) => Container(
               height: 120,
-              decoration:
-                  BoxDecoration(border: Border.all(color: AppColors.border)),
-              child:
-                  const Center(child: Text('Error cargando actividad grupal')),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                border: Border.all(color: AppColors.border),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: Text(
+                  'Error cargando actividad grupal',
+                  style: TextStyle(
+                    color: AppColors.muted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
             ),
             data: (data) => ContributionHeatmap(data: data),
           ),

@@ -107,7 +107,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
 
               ProfileStatsRow(userId: userId),
-              const ProfileRankCard(),
+              ProfileRankCard(userId: userId),
               const SizedBox(height: 24),
               ActivityHeatmapSection(userId: userId),
               const SizedBox(height: 24),

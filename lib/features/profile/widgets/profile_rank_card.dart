@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
+import '../providers/profile_providers.dart';
 
-class ProfileRankCard extends StatelessWidget {
-  const ProfileRankCard({super.key});
+class ProfileRankCard extends ConsumerWidget {
+  final String userId;
+  const ProfileRankCard({super.key, required this.userId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final rankAsync = ref.watch(rankProvider(userId));
+
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       padding: const EdgeInsets.all(18),
@@ -32,22 +37,38 @@ class ProfileRankCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Top 5%',
-                  style: TextStyle(
-                    fontSize: 27,
-                    height: 1,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.onBackground,
-                    letterSpacing: -0.4,
+                rankAsync.when(
+                  loading: () => const Text(
+                    'Top --%',
+                    style: TextStyle(
+                      fontSize: 27,
+                      height: 1,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onBackground,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  error: (_, __) => const Text(
+                    'Top 100%',
+                    style: TextStyle(fontSize: 27, fontWeight: FontWeight.w800),
+                  ),
+                  data: (rank) => Text(
+                    'Top ${rank.percentil}%',
+                    style: const TextStyle(
+                      fontSize: 27,
+                      height: 1,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.onBackground,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                 ),
-                SizedBox(height: 7),
-                Text(
+                const SizedBox(height: 7),
+                const Text(
                   'RANGO EN CONTRIBUCIONES',
                   style: TextStyle(
                     fontSize: 9,
@@ -59,19 +80,23 @@ class ProfileRankCard extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text(
-              'ÉLITE',
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                color: AppColors.primary,
-                letterSpacing: 1.1,
+          rankAsync.when(
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
+            data: (rank) => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                rank.etiqueta,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.primary,
+                  letterSpacing: 1.1,
+                ),
               ),
             ),
           ),

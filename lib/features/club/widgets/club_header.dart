@@ -11,13 +11,38 @@ class ClubHeader extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final identityAsync = ref.watch(clubIdentityProvider(clubId));
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 20),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.border.withValues(alpha: 0.75),
+        ),
+      ),
       child: identityAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (e, s) => const Text('Error al cargar la identidad del club', style: TextStyle(color: Colors.redAccent)),
+        loading: () => const SizedBox(
+          height: 96,
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+        ),
+        error: (e, s) => const SizedBox(
+          height: 96,
+          child: Center(
+            child: Text(
+              'Error al cargar la identidad del club',
+              style: TextStyle(
+                color: AppColors.muted,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
         data: (club) {
-          final acronimo = club['divisiones_academicas']?['acronimo'] ?? 'Desconocida';
+          final acronimo =
+              club['divisiones_academicas']?['acronimo'] ?? 'Desconocida';
 
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -27,15 +52,26 @@ class ClubHeader extends ConsumerWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1B2B20),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.5), width: 2),
-                  image: club['url_logo'] != null && club['url_logo'].toString().isNotEmpty
-                      ? DecorationImage(image: NetworkImage(club['url_logo']), fit: BoxFit.cover)
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.65),
+                    width: 2,
+                  ),
+                  image: club['url_logo'] != null &&
+                          club['url_logo'].toString().isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(club['url_logo']),
+                          fit: BoxFit.cover)
                       : null,
                 ),
-                child: club['url_logo'] == null || club['url_logo'].toString().isEmpty
-                    ? const Icon(Icons.science_outlined, color: AppColors.primary, size: 40)
+                child: club['url_logo'] == null ||
+                        club['url_logo'].toString().isEmpty
+                    ? const Icon(
+                        Icons.science_outlined,
+                        color: AppColors.primary,
+                        size: 40,
+                      )
                     : null,
               ),
               const SizedBox(width: 16),
@@ -45,25 +81,48 @@ class ClubHeader extends ConsumerWidget {
                   children: [
                     // Nombre oficial del club
                     Text(
-                      club['nombre'].toString().toUpperCase(),
+                      club['nombre'].toString(),
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 19,
                         fontWeight: FontWeight.w800,
                         color: AppColors.onBackground,
-                        height: 1.1,
+                        height: 1.15,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 9),
+                    // Acrónimo Distintivo
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        acronimo.toString().toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 9,
+                          color: AppColors.background,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    // Acrónimo Distintivo
-                    Text(
-                      'División Académica: $acronimo',
-                      style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 9),
                     // Descripción del enfoque de investigación
                     Text(
                       club['descripcion'] ?? 'Sin descripción disponible.',
-                      style: const TextStyle(fontSize: 12, color: AppColors.muted, height: 1.4),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.muted,
+                        fontWeight: FontWeight.w500,
+                        height: 1.45,
+                      ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),

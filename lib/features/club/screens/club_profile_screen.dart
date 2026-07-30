@@ -17,6 +17,7 @@ class ClubProfileScreen extends ConsumerWidget {
     return DefaultTabController(
       length: 2, // Activos | Histórico
       child: Scaffold(
+        backgroundColor: AppColors.background,
         appBar: const CucAppBar(),
         body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -27,21 +28,37 @@ class ClubProfileScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       ClubHeader(clubId: clubId),
-                      ClubMetricsRow(clubId: clubId),
                       const SizedBox(height: 16),
+                      ClubMetricsRow(clubId: clubId),
+                      const SizedBox(height: 24),
                       ClubHeatmapSection(clubId: clubId),
                     ],
                   ),
                 ),
               ),
-              const SliverPersistentHeader(
+              SliverPersistentHeader(
                 pinned: true,
                 delegate: _SliverAppBarDelegate(
                   TabBar(
-                    indicatorColor: AppColors.primary,
+                    indicator: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
                     labelColor: AppColors.primary,
                     unselectedLabelColor: AppColors.muted,
-                    tabs: [
+                    labelStyle: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.1,
+                    ),
+                    unselectedLabelStyle: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.1,
+                    ),
+                    tabs: const [
                       Tab(text: 'MIEMBROS ACTIVOS'),
                       Tab(text: 'HISTÓRICO'),
                     ],
@@ -68,10 +85,19 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => _tabBar.preferredSize.height;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: AppColors.background, // Mantiene el fondo oscuro impecable
-      child: _tabBar,
+      color: AppColors.background,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: _tabBar,
+      ),
     );
   }
 
