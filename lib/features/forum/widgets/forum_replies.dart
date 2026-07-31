@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../providers/forum_providers.dart';
 import 'forum_user_avatar.dart' as forum_widgets;
 
@@ -183,6 +184,8 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
 
   @override
   Widget build(BuildContext context) {
+    final userProfile = ref.watch(currentUserProfileProvider).value;
+    final isReadOnly = userProfile?.estado != 'activo';
     // Definimos el color de la línea de jerarquía.
     // Usamos el verde institucional primario para respuestas directas y un gris tenue para sub-respuestas.
     final depthColor = widget.depth == 1
@@ -229,7 +232,8 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(width: 6),
-                    const Text('•', style: TextStyle(color: AppColors.muted, fontSize: 10)),
+                    const Text('•',
+                        style: TextStyle(color: AppColors.muted, fontSize: 10)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -251,7 +255,8 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
           Text(
             widget.reply.content,
             style: const TextStyle(
-              fontSize: 14, // Aumentado ligeramente para mejor lectura científica
+              fontSize:
+                  14, // Aumentado ligeramente para mejor lectura científica
               height: 1.5,
               color: AppColors.onSurface,
             ),
@@ -261,27 +266,33 @@ class _ReplyTileState extends ConsumerState<_ReplyTile> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _CompactActionBtn(
-                icon: Icons.keyboard_arrow_up_rounded,
-                count: _localUpVotes,
-                onPressed: () => _handleVote(up: true),
-                isActive: false, // Aquí podrías inyectar si el usuario ya votó
-              ),
-              _CompactActionBtn(
-                icon: Icons.keyboard_arrow_down_rounded,
-                count: _localDownVotes,
-                onPressed: () => _handleVote(up: false),
-                isMuted: true,
-              ),
+              if (!isReadOnly) ...[
+                _CompactActionBtn(
+                  icon: Icons.keyboard_arrow_up_rounded,
+                  count: _localUpVotes,
+                  onPressed: () => _handleVote(up: true),
+                  isActive: false,
+                ),
+                _CompactActionBtn(
+                  icon: Icons.keyboard_arrow_down_rounded,
+                  count: _localDownVotes,
+                  onPressed: () => _handleVote(up: false),
+                  isMuted: true,
+                ),
+              ],
               const Spacer(), // Empuja las respuestas a la derecha
               if (widget.childCount > 0)
                 _TextActionBtn(
-                  icon: widget.childrenExpanded ? Icons.unfold_less_rounded : Icons.chat_bubble_outline_rounded,
-                  label: widget.childrenExpanded ? 'Ocultar' : '${widget.childCount} res',
+                  icon: widget.childrenExpanded
+                      ? Icons.unfold_less_rounded
+                      : Icons.chat_bubble_outline_rounded,
+                  label: widget.childrenExpanded
+                      ? 'Ocultar'
+                      : '${widget.childCount} res',
                   onPressed: widget.onToggleChildren,
                   color: AppColors.muted,
                 ),
-              if (widget.onReply != null)
+              if (!isReadOnly && widget.onReply != null)
                 _TextActionBtn(
                   icon: Icons.reply_rounded,
                   label: 'Responder',
@@ -316,7 +327,9 @@ class _CompactActionBtn extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isActive
         ? AppColors.primary
-        : (isMuted ? AppColors.muted : AppColors.onSurface.withValues(alpha: 0.7));
+        : (isMuted
+            ? AppColors.muted
+            : AppColors.onSurface.withValues(alpha: 0.7));
 
     return InkWell(
       onTap: onPressed,

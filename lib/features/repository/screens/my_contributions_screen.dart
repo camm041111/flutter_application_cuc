@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/cuc_pill_tab_bar.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../providers/repository_providers.dart';
 import '../widgets/repository_document_card.dart';
 import '../widgets/repository_upload_sheet.dart';
@@ -115,7 +116,7 @@ class _ContributionsTab extends ConsumerWidget {
   }
 }
 
-class _ContributionCard extends StatelessWidget {
+class _ContributionCard extends ConsumerWidget {
   const _ContributionCard({
     required this.document,
     required this.showReviewFeedback,
@@ -134,9 +135,11 @@ class _ContributionCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isRejected = document.status.toLowerCase() == 'rechazado';
     final accent = isRejected ? AppColors.error : AppColors.primary;
+    final userProfile = ref.watch(currentUserProfileProvider).value;
+    final isReadOnly = userProfile?.estado != 'activo';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -254,14 +257,15 @@ class _ContributionCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () => _openCorrectionForm(context),
-                icon: const Icon(Icons.edit_document, size: 18),
-                label: const Text('CORREGIR Y REENVIAR'),
+            if (!isReadOnly)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _openCorrectionForm(context),
+                  icon: const Icon(Icons.edit_document, size: 18),
+                  label: const Text('CORREGIR Y REENVIAR'),
+                ),
               ),
-            ),
           ],
         ],
       ),

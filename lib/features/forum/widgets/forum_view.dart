@@ -26,7 +26,8 @@ class ForumView extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final threadsAsync = ref.watch(forumThreadsProvider);
-    final profileAsync = ref.watch(currentUserProfileProvider);
+    final userProfile = ref.watch(currentUserProfileProvider).value;
+    final isReadOnly = userProfile?.estado != 'activo';
 
     return Scaffold(
       appBar: const CucAppBar(),
@@ -75,17 +76,14 @@ class ForumView extends ConsumerWidget {
           ],
         ),
       ),
-      floatingActionButton: profileAsync.maybeWhen(
-        data: (profile) => profile?.estado == 'activo'
-            ? FloatingActionButton(
-                onPressed: () => _openThreadSheet(context),
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.background,
-                child: const Icon(Icons.add_comment_outlined),
-              )
-            : null,
-        orElse: () => null,
-      ),
+      floatingActionButton: !isReadOnly
+          ? FloatingActionButton(
+              onPressed: () => _openThreadSheet(context),
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.background,
+              child: const Icon(Icons.add_comment_outlined),
+            )
+          : null,
     );
   }
 }

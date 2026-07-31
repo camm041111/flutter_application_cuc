@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/cache/app_cache_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
+import '../profile/providers/profile_providers.dart';
 import 'providers/events_providers.dart';
 import 'widgets/create_event_sheet.dart';
 import 'widgets/events_list.dart';
@@ -27,6 +28,8 @@ class AgendaScreen extends ConsumerWidget {
     final showFuture = ref.watch(showFutureEventsProvider);
     final eventsAsync = ref.watch(eventsProvider);
     final canManageAsync = ref.watch(canManageEventsProvider);
+    final userProfile = ref.watch(currentUserProfileProvider).value;
+    final isReadOnly = userProfile?.estado != 'activo';
 
     return Scaffold(
       appBar: const CucAppBar(),
@@ -64,7 +67,7 @@ class AgendaScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: canManageAsync.maybeWhen(
-        data: (canManage) => canManage
+        data: (canManage) => canManage && !isReadOnly
             ? FloatingActionButton(
                 onPressed: () => _openCreateEventSheet(context),
                 backgroundColor: AppColors.primary,

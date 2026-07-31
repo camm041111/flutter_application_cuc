@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/cache/app_cache_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/cuc_app_bar.dart';
+import '../profile/providers/profile_providers.dart';
 
 import 'widgets/explore_search_bar.dart';
 import 'widgets/news_card.dart';
@@ -29,6 +30,8 @@ class ExploreScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final newsAsync = ref.watch(newsProvider);
     final canPublishAsync = ref.watch(canPublishNewsProvider);
+    final userProfile = ref.watch(currentUserProfileProvider).value;
+    final isReadOnly = userProfile?.estado != 'activo';
 
     return Scaffold(
       appBar: const CucAppBar(),
@@ -104,7 +107,7 @@ class ExploreScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: canPublishAsync.maybeWhen(
-        data: (canPublish) => canPublish
+        data: (canPublish) => canPublish && !isReadOnly
             ? FloatingActionButton(
                 onPressed: () => _openNewsSheet(context),
                 backgroundColor: AppColors.primary,
