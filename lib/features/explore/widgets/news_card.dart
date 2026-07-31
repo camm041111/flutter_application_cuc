@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../club/screens/club_profile_screen.dart';
 import '../../profile/profile_screen.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../providers/explore_providers.dart';
 import 'news_image_attachment.dart';
 import 'news_tag.dart';
@@ -75,6 +76,8 @@ class _NewsCardState extends ConsumerState<NewsCard> {
   Widget build(BuildContext context) {
     final canManageAsync = ref.watch(canManageNewsProvider(widget.post));
     final canManage = canManageAsync.asData?.value ?? false;
+    final userProfile = ref.watch(currentUserProfileProvider).value;
+    final isReadOnly = userProfile?.estado != 'activo';
 
     return Card(
       elevation: 2,
@@ -145,7 +148,7 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                         ],
                       ),
                     ),
-                    if (canManage)
+                    if (canManage && !isReadOnly)
                       IconButton(
                         icon: const Icon(Icons.delete_outline,
                             size: 20, color: AppColors.muted),
@@ -211,63 +214,65 @@ class _NewsCardState extends ConsumerState<NewsCard> {
                 const SizedBox(height: 12),
 
                 // ⚡ BOTÓN "ME GUSTA" CON RESPUESTA INSTANTÁNEA ⚡
-                InkWell(
-                  onTap: () async {
-                    // 1. Mutación Optimista: Actualizamos la UI al instante
-                    setState(() {
-                      _isLikedLocal = !_isLikedLocal;
-                      _likesCountLocal += _isLikedLocal ? 1 : -1;
-                    });
-
-                    // 2. Ejecutamos tu provider en el backend de forma silenciosa
-                    final success = await ref
-                        .read(exploreActionsProvider)
-                        .toggleLike(widget.post.id);
-
-                    // 3. Rollback: Si la BD rechaza el like o el internet falla, revertimos el color
-                    if (!context.mounted) return;
-                    if (!success) {
+                if (!isReadOnly)
+                  InkWell(
+                    onTap: () async {
+                      // 1. Mutación Optimista: Actualizamos la UI al instante
                       setState(() {
                         _isLikedLocal = !_isLikedLocal;
                         _likesCountLocal += _isLikedLocal ? 1 : -1;
                       });
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Error al conectar con el servidor')),
-                      );
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 4.0, vertical: 4.0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _isLikedLocal
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: _isLikedLocal
-                              ? Colors.redAccent
-                              : AppColors.muted,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          _likesCountLocal.toString(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+
+                      // 2. Ejecutamos tu provider en el backend de forma silenciosa
+                      final success = await ref
+                          .read(exploreActionsProvider)
+                          .toggleLike(widget.post.id);
+
+                      // 3. Rollback: Si la BD rechaza el like o el internet falla, revertimos el color
+                      if (!context.mounted) return;
+                      if (!success) {
+                        setState(() {
+                          _isLikedLocal = !_isLikedLocal;
+                          _likesCountLocal += _isLikedLocal ? 1 : -1;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text('Error al conectar con el servidor')),
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4.0, vertical: 4.0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _isLikedLocal
+                                ? Icons.favorite
+                                : Icons.favorite_border,
                             color: _isLikedLocal
                                 ? Colors.redAccent
                                 : AppColors.muted,
+                            size: 20,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 6),
+                          Text(
+                            _likesCountLocal.toString(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _isLikedLocal
+                                  ? Colors.redAccent
+                                  : AppColors.muted,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

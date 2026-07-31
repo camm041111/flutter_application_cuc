@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/cache/app_cache_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/cuc_app_bar.dart';
+import '../../profile/providers/profile_providers.dart';
 import '../providers/repository_providers.dart';
 import 'repository_document_card.dart';
 import 'repository_filter_sheet.dart';
@@ -35,6 +36,8 @@ class RepositoryView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(repositoryFiltersProvider);
     final documentsAsync = ref.watch(repositoryDocumentsProvider);
+    final userProfile = ref.watch(currentUserProfileProvider).value;
+    final isReadOnly = userProfile?.estado != 'activo';
 
     return Scaffold(
       appBar: const CucAppBar(),
@@ -103,12 +106,14 @@ class RepositoryView extends ConsumerWidget {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openUploadSheet(context),
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.background,
-        child: const Icon(Icons.upload_file),
-      ),
+      floatingActionButton: isReadOnly
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _openUploadSheet(context),
+              backgroundColor: AppColors.primary,
+              foregroundColor: AppColors.background,
+              child: const Icon(Icons.upload_file),
+            ),
     );
   }
 }
