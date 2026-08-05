@@ -61,15 +61,8 @@ class CucAppBar extends ConsumerWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          onPressed: () async {
-            try {
-              await ref.read(notificationServiceProvider).markAllAsRead();
-            } catch (_) {
-              // La bandeja debe abrir incluso si la actualizacion remota falla.
-            }
-            if (context.mounted) {
-              _openNotifications(context);
-            }
+          onPressed: () {
+            _openNotifications(context);
           },
           icon: Badge(
             isLabelVisible: unreadCount > 0,
@@ -177,37 +170,53 @@ class _NotificationsSheet extends ConsumerWidget {
                 Text('No se pudieron cargar las notificaciones: $error')
               ],
             ),
-            data: (items) => ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text('Notificaciones',
-                          style: TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w800)),
-                    ),
-                    IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                if (items.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      border: Border.all(color: AppColors.border),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text('Aun no tienes notificaciones.',
-                        textAlign: TextAlign.center),
-                  )
-                else
-                  ...items.map((item) => _NotificationTile(item: item)),
-              ],
+            data: (items) => RefreshIndicator(
+              color: AppColors.primary,
+              backgroundColor: AppColors.surface,
+              onRefresh: () =>
+                  ref.read(notificationsProvider.notifier).refresh(),
+              child: ListView(
+                controller: scrollController,
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                children: [
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text('Notificaciones',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w800)),
+                      ),
+                      if (items.any((item) => !item.read))
+                        TextButton.icon(
+                          onPressed: () => ref
+                              .read(notificationServiceProvider)
+                              .markAllAsRead(),
+                          icon: const Icon(Icons.done_all, size: 16),
+                          label: const Text('LEER TODO',
+                              style: TextStyle(fontSize: 11)),
+                        ),
+                      IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (items.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        border: Border.all(color: AppColors.border),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text('Aun no tienes notificaciones.',
+                          textAlign: TextAlign.center),
+                    )
+                  else
+                    ...items.map((item) => _NotificationTile(item: item)),
+                ],
+              ),
             ),
           ),
         );
@@ -223,24 +232,135 @@ class _NotificationTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Card(
-      child: ListTile(
-        leading: Icon(
-          item.type == 'agenda'
-              ? Icons.event_available_outlined
-              : Icons.notifications_outlined,
-          color: item.read ? AppColors.muted : AppColors.primary,
+    final unread = !item.read;
+    final iconData = _iconForType(item.type);
+    final color = _colorForType(item.type);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: unread ? AppColors.surfaceVariant : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: unread
+                ? AppColors.primary.withValues(alpha: 0.35)
+                : AppColors.border,
+          ),
         ),
-        title: Text(item.title,
-            style: const TextStyle(fontWeight: FontWeight.w700)),
-        subtitle: Text(item.body, maxLines: 2, overflow: TextOverflow.ellipsis),
-        trailing: IconButton(
-          icon: const Icon(Icons.done, size: 18),
-          onPressed: item.read
-              ? null
-              : () => ref.read(notificationServiceProvider).markAsRead(item.id),
+        child: ListTile(
+          onTap: unread
+              ? () => ref.read(notificationServiceProvider).markAsRead(item.id)
+              : null,
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(iconData, color: color, size: 20),
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  item.title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: unread ? FontWeight.w800 : FontWeight.w600,
+                    color: unread
+                        ? AppColors.onBackground
+                        : AppColors.onSurface,
+                  ),
+                ),
+              ),
+              if (unread)
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary,
+                  ),
+                ),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 2),
+              Text(
+                item.body,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _relativeTime(item.createdAt),
+                style: const TextStyle(color: AppColors.muted, fontSize: 10),
+              ),
+            ],
+          ),
+          trailing: IconButton(
+            tooltip: 'Eliminar',
+            icon: const Icon(
+              Icons.delete_outline,
+              size: 18,
+              color: AppColors.muted,
+            ),
+            onPressed: () =>
+                ref.read(notificationServiceProvider).deleteNotification(item.id),
+          ),
         ),
       ),
     );
   }
+}
+
+IconData _iconForType(String type) {
+  switch (type) {
+    case 'solicitud_ingreso':
+      return Icons.person_add_alt_1_outlined;
+    case 'repositorio':
+      return Icons.description_outlined;
+    case 'agenda':
+      return Icons.event_available_outlined;
+    case 'foro':
+      return Icons.forum_outlined;
+    case 'noticia':
+      return Icons.newspaper_outlined;
+    case 'sistema':
+      return Icons.info_outline;
+    default:
+      return Icons.notifications_outlined;
+  }
+}
+
+Color _colorForType(String type) {
+  switch (type) {
+    case 'solicitud_ingreso':
+      return const Color(0xFF4FC3F7);
+    case 'repositorio':
+      return AppColors.primary;
+    case 'agenda':
+      return const Color(0xFFFFB74D);
+    case 'foro':
+      return const Color(0xFFBA68C8);
+    case 'noticia':
+      return const Color(0xFFFF8A65);
+    default:
+      return AppColors.muted;
+  }
+}
+
+String _relativeTime(DateTime date) {
+  final diff = DateTime.now().difference(date);
+  if (diff.inSeconds < 60) return 'ahora mismo';
+  if (diff.inMinutes < 60) return 'hace ${diff.inMinutes} min';
+  if (diff.inHours < 24) return 'hace ${diff.inHours} h';
+  if (diff.inDays == 1) return 'ayer';
+  if (diff.inDays < 7) return 'hace ${diff.inDays} días';
+  return '${date.day}/${date.month}/${date.year}';
 }
