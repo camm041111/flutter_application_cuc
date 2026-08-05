@@ -19,6 +19,9 @@ class UserProfile {
   final String? clubId;
   final String? clubNombre;
 
+  // Comentario de rechazo del coordinador (solo aplica si estado == 'rechazado')
+  final String? comentariosRevision;
+
   UserProfile({
     required this.id,
     required this.nombreCompleto,
@@ -29,6 +32,7 @@ class UserProfile {
     required this.divisionAcronimo,
     this.clubId,
     this.clubNombre,
+    this.comentariosRevision,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
@@ -45,6 +49,7 @@ class UserProfile {
       divisionAcronimo: json['divisiones_academicas']['acronimo'],
       clubId: clubData?['id'],
       clubNombre: clubData?['nombre'],
+      comentariosRevision: json['comentarios_revision']?.toString(),
     );
   }
 
@@ -63,6 +68,7 @@ class UserProfile {
               'id': clubId,
               'nombre': clubNombre,
             },
+      'comentarios_revision': comentariosRevision,
     };
   }
 }
@@ -128,6 +134,25 @@ class ProfileActions {
 
     await ref.read(appCacheServiceProvider).invalidate('profile:${profile.id}');
     ref.invalidate(profileProvider(profile.id));
+  }
+
+  Future<void> reenviarSolicitudIngreso({
+    required String nombre,
+    required String matricula,
+  }) async {
+    final supabase = ref.read(supabaseClientProvider);
+
+    await supabase.rpc('reenviar_solicitud_ingreso', params: {
+      'p_nuevo_nombre': nombre,
+      'p_nueva_matricula': matricula,
+    });
+
+    final user = supabase.auth.currentUser;
+    if (user != null) {
+      await ref.read(appCacheServiceProvider).invalidate('profile:${user.id}');
+      ref.invalidate(profileProvider(user.id));
+    }
+    ref.invalidate(currentUserProfileProvider);
   }
 }
 

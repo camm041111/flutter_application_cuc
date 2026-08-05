@@ -105,7 +105,7 @@ String? _evaluateProfileRedirect(AsyncValue<UserProfile?> profileAsync) {
       if (profile == null) return '/login';
 
       final estado = profile.estado;
-      if (estado == 'registrado') return '/pending';
+      if (estado == 'registrado' || estado == 'rechazado') return '/pending';
       if (estado == 'baja') return '/banned';
 
       // Activos e inactivos (Solo lectura) tienen acceso a la estructura principal

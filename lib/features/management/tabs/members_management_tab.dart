@@ -74,6 +74,31 @@ class MembersManagementTab extends ConsumerWidget {
                         FilledButton.tonalIcon(
                           style: FilledButton.styleFrom(
                             backgroundColor:
+                                AppColors.error.withValues(alpha: 0.14),
+                            foregroundColor: AppColors.error,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: const Icon(Icons.close_rounded, size: 17),
+                          label: const Text(
+                            'RECHAZAR',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.6,
+                            ),
+                          ),
+                          onPressed: () =>
+                              _showRejectDialog(context, ref, user),
+                        ),
+                        FilledButton.tonalIcon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor:
                                 AppColors.primary.withValues(alpha: 0.14),
                             foregroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(
@@ -444,6 +469,131 @@ class MembersManagementTab extends ConsumerWidget {
       SnackBar(
         content: Text(success ? message : 'Error al procesar la solicitud'),
         backgroundColor: success ? const Color(0xFF007A33) : Colors.red,
+      ),
+    );
+  }
+
+  Future<void> _showRejectDialog(
+    BuildContext context,
+    WidgetRef ref,
+    dynamic user,
+  ) async {
+    final commentController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(
+                color: AppColors.border.withValues(alpha: 0.5),
+              ),
+            ),
+            title: const Row(
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.error,
+                  size: 23,
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Rechazar Solicitud',
+                  style: TextStyle(color: AppColors.error),
+                ),
+              ],
+            ),
+            content: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Aspirante: ${user['nombre_completo']}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: commentController,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText:
+                          'Explica los motivos del rechazo (Obligatorio)...',
+                      filled: true,
+                      fillColor: AppColors.background,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    validator: (value) =>
+                        value == null || value.trim().length < 10
+                            ? 'Proporciona al menos 10 caracteres de feedback.'
+                            : null,
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed:
+                    isSubmitting ? null : () => Navigator.pop(dialogContext),
+                child: const Text(
+                  'CANCELAR',
+                  style: TextStyle(color: AppColors.muted),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        if (!formKey.currentState!.validate()) return;
+                        setState(() => isSubmitting = true);
+
+                        final success =
+                            await CoordinatorActions.rejectMember(
+                          ref,
+                          user['id'],
+                          commentController.text.trim(),
+                        );
+
+                        if (!dialogContext.mounted) return;
+                        Navigator.pop(dialogContext);
+                        _showResult(
+                          dialogContext,
+                          success,
+                          success
+                              ? 'Solicitud rechazada con comentarios'
+                              : 'Fallo en la base de datos',
+                        );
+                      },
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('RECHAZAR'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
